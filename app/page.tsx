@@ -246,14 +246,17 @@ export default function LandingPage() {
             AIDE
           </Link>
           {user ? (
-            <div className="flex items-center gap-3">
+            <nav className="flex items-center gap-3">
               <Button variant="outline" className="rounded-full font-medium" asChild>
                 <Link href="/dashboard">ダッシュボード</Link>
               </Button>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+              <Link
+                href="/account"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
                 {user.displayName?.slice(0, 2) ?? user.email?.slice(0, 2)?.toUpperCase() ?? "AI"}
-              </div>
-            </div>
+              </Link>
+            </nav>
           ) : (
             <nav className="flex items-center gap-3">
               <Button variant="ghost" className="font-medium" asChild>
