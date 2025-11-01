@@ -6,6 +6,9 @@ import { useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
+import { getAuth, signOut } from "firebase/auth"
+import { useAuth } from "../providers"
 
 interface CompanyInsight {
   company: string
@@ -24,6 +27,7 @@ interface CompanyInsight {
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const [tickers, setTickers] = useState(["", "", ""])
   const [companies, setCompanies] = useState<(CompanyInsight | null)[]>([null, null, null])
   const [loading, setLoading] = useState([false, false, false])
@@ -89,20 +93,57 @@ export default function DashboardPage() {
   }, [analyzeCompany, searchParams])
 
   const validCompanies = companies.filter((c): c is CompanyInsight => c !== null)
+  const suggestedCompanies = [
+    { ticker: "9831.T", name: "ヤマダホールディングス" },
+    { ticker: "7419.T", name: "ノジマ" },
+    { ticker: "3048.T", name: "ビックカメラ" },
+    { ticker: "8058.T", name: "三菱商事" },
+    { ticker: "4755.T", name: "楽天グループ" },
+  ]
+
+  const handleSuggestedSelect = useCallback(
+    (ticker: string) => {
+      const targetIndex = tickers.findIndex((value) => !value.trim())
+      const indexToUse = targetIndex === -1 ? 0 : targetIndex
+      setTickers((prev) => prev.map((value, idx) => (idx === indexToUse ? ticker : value)))
+      analyzeCompany(indexToUse, ticker)
+    },
+    [analyzeCompany, tickers],
+  )
 
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-200">
         <div className="flex items-center justify-between max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-xl font-semibold text-gray-900">AIDE</h1>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" className="font-medium" asChild>
-              <a href="/sign-in">Sign in</a>
-            </Button>
-            <Button className="rounded-full font-medium" asChild>
-              <a href="/sign-up">Sign up</a>
-            </Button>
-          </div>
+          <Link href="/" className="text-xl font-semibold text-gray-900">
+            AIDE
+          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                {user.displayName?.slice(0, 2) ?? user.email?.slice(0, 2)?.toUpperCase() ?? "AI"}
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-full border-gray-300 font-medium"
+                onClick={async () => {
+                  const auth = getAuth()
+                  await signOut(auth)
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" className="font-medium" asChild>
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button className="rounded-full font-medium" asChild>
+                <Link href="/sign-up">Sign up</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -142,6 +183,24 @@ export default function DashboardPage() {
                 {errors[index] && <p className="text-xs text-red-600">{errors[index]}</p>}
               </div>
             ))}
+          </div>
+          <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 text-left shadow-sm">
+            <p className="text-sm font-semibold text-gray-900">主な企業セット</p>
+            <p className="mt-1 text-xs text-gray-500">クリックすると空いている枠にティッカーが入力されます。</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {suggestedCompanies.map((company) => (
+                <Button
+                  key={company.ticker}
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:border-blue-400 hover:text-blue-600"
+                  onClick={() => handleSuggestedSelect(company.ticker)}
+                >
+                  <span className="mr-2 text-gray-500">{company.ticker}</span>
+                  <span>{company.name}</span>
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
