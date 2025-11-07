@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
 import { firestore } from "@/lib/firebase"
 import { useAuth } from "../providers"
 
@@ -45,7 +46,7 @@ const profileFields: Array<{ label: string; value: (params: { name: string | nul
   ]
 
 export default function AccountPage() {
-  const { user, loading } = useAuth()
+  const { user, loading, plan } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -168,36 +169,52 @@ export default function AccountPage() {
 
   const auth = getAuth()
 
+  const planLabel = plan === "pro" ? "Pro プラン" : plan === "free" ? "Free プラン" : "読み込み中..."
+
   return (
-    <div className="min-h-screen bg-white">
-      <header className="border-b border-gray-200">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-xl font-semibold text-gray-900">
-            AIDE
-          </Link>
+    <div className="bg-white">
+      <main className="mx-auto flex max-w-4xl flex-col gap-10 px-6 py-16">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">アカウント</h1>
+            <p className="mt-2 text-sm text-gray-600">AIDE アカウントの基本情報と設定を管理できます。</p>
+          </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="rounded-full font-medium" asChild>
-              <Link href="/dashboard">ダッシュボードに戻る</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full font-medium text-gray-600"
-              onClick={async () => {
-                await signOut(auth)
-                router.replace("/")
-              }}
-            >
-              Sign out
+            {plan === "pro" ? (
+              <Badge variant="outline" className="border-primary text-primary">
+                Pro プラン
+              </Badge>
+            ) : plan === "free" ? (
+              <Button asChild size="sm" className="rounded-full font-semibold">
+                <Link href="/checkout">アップグレード</Link>
+              </Button>
+            ) : null}
+            <Button variant="ghost" size="sm" className="rounded-full font-medium text-gray-600" onClick={async () => {
+              await signOut(auth)
+              router.replace("/")
+            }}>
+              ログアウト
             </Button>
           </div>
         </div>
-      </header>
 
-      <main className="mx-auto flex max-w-4xl flex-col gap-10 px-6 py-16">
         <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-semibold text-gray-900">アカウント</h1>
-          <p className="mt-2 text-sm text-gray-600">AIDE アカウントの基本情報と設定を管理できます。</p>
+          <h2 className="text-lg font-semibold text-gray-900">プラン状況</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            現在のプラン: <span className="font-medium">{planLabel}</span>
+          </p>
+          {plan === "free" ? (
+            <div className="mt-4">
+              <Button asChild>
+                <Link href="/checkout">Pro にアップグレードする</Link>
+              </Button>
+            </div>
+          ) : plan === "pro" ? (
+            <p className="mt-4 text-sm text-gray-500">アップグレード済みです。請求情報の変更や解約はサポートチームまでご連絡ください。</p>
+          ) : null}
+        </section>
 
+        <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
           <dl className="mt-8 grid gap-6 md:grid-cols-2">
             {profileFields.map((field) => (
               <div key={field.label} className="rounded-2xl border border-gray-200 bg-gray-50 p-5">

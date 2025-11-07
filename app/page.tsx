@@ -240,36 +240,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="border-b border-gray-200">
-        <div className="flex items-center justify-between max-w-6xl mx-auto px-6 py-5">
-          <Link href="/" className="text-xl font-semibold text-gray-900">
-            AIDE
-          </Link>
-          {user ? (
-            <nav className="flex items-center gap-3">
-              <Button variant="outline" className="rounded-full font-medium" asChild>
-                <Link href="/dashboard">ダッシュボード</Link>
-              </Button>
-              <Link
-                href="/account"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                {user.displayName?.slice(0, 2) ?? user.email?.slice(0, 2)?.toUpperCase() ?? "AI"}
-              </Link>
-            </nav>
-          ) : (
-            <nav className="flex items-center gap-3">
-              <Button variant="ghost" className="font-medium" asChild>
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-              <Button className="rounded-full font-medium" asChild>
-                <Link href="/sign-up">Sign up</Link>
-              </Button>
-            </nav>
-          )}
-        </div>
-      </header>
-
       <main>
         <section className="border-b border-gray-200 bg-linear-to-b from-white to-gray-50">
           <div className="max-w-6xl mx-auto grid gap-12 px-6 py-24 md:grid-cols-2 md:items-center">

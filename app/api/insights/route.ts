@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { fetchEdinetCompanyInfoByTicker } from "../../../lib/edinet"
 
 const MOCK_DATA: Record<string, any> = {
   "9831.T": {
@@ -58,15 +59,8 @@ interface InsightCacheEntry {
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6
 const insightsCache = new Map<string, InsightCacheEntry>()
 
-const YAHOO_FINANCE_ENDPOINT = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
-const YAHOO_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (compatible; AIDE/1.0; +https://aide-investment-app.local)",
-  Accept: "application/json",
-} as const
-const RAPIDAPI_HOST = "apidojo-yahoo-finance-v1.p.rapidapi.com"
-const APIDOJO_PROFILE_ENDPOINT = `https://${RAPIDAPI_HOST}/stock/v2/get-profile`
 const WIKIPEDIA_API_ENDPOINT = "https://ja.wikipedia.org/w/api.php"
-const WIKIPEDIA_USER_AGENT = "AIDE-Investment-App/1.0 (+https://aide.example.com)"
+export const WIKIPEDIA_USER_AGENT = "AIDE-Investment-App/1.0 (+https://aide.example.com)"
 
 interface OfficerInfo {
   name: string | null
@@ -198,6 +192,18 @@ function formatHeadquarters(profile: Record<string, any> | undefined) {
   return parts.join(", ")
 }
 
+function formatCapitalAmount(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  if (/[^\d.,-]/.test(trimmed)) {
+    return trimmed
+  }
+  const numeric = Number(trimmed.replace(/,/g, ""))
+  if (!Number.isFinite(numeric)) return trimmed
+  return `${new Intl.NumberFormat("ja-JP").format(Math.round(numeric))}円`
+}
+
 function normalizeWebsite(url: unknown): string | null {
   if (typeof url !== "string") return null
   const trimmed = url.trim()
@@ -313,11 +319,20 @@ function stripWikiMarkup(value: string): string {
 
 function sanitizeWikiValue(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null
-  const cleaned = stripWikiMarkup(value)
+  const cleaned = stripWikiMarkup(expandPlainListTemplates(value))
     .replace(/^\s*[*•\-]\s*/gm, "")
     .replace(/\s+/g, " ")
     .trim()
   return cleaned.length > 0 ? cleaned : null
+}
+
+function normalizeRepresentativeForComparison(value: string | null | undefined): string | null {
+  if (!value) return null
+  return value
+    .replace(/（[^）]*）/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[・（）()［］\[\]\s　]/g, "")
+    .toLowerCase()
 }
 
 function composeRepresentative(name?: string | null, title?: string | null): string | null {
@@ -340,7 +355,7 @@ function extractRepresentativeFromWikitext(wikitext: string): OfficerInfo | null
     if (!keyMatch) continue
     const key = keyMatch[1].trim()
     if (!keys.some((candidateKey) => key.includes(candidateKey))) continue
-    const rawValue = keyMatch[2]
+    const rawValue = expandPlainListTemplates(keyMatch[2])
     const value = stripWikiMarkup(rawValue)
     if (!value) continue
     const parts = value.split(/\n|、|，|；|;/)
@@ -380,83 +395,8 @@ function extractRepresentativeFromWikitext(wikitext: string): OfficerInfo | null
   }
 }
 
-async function fetchWikipediaRepresentative(name: string | null, fallbackTicker: string): Promise<OfficerInfo | null> {
-  const queryName = name?.trim()
-  if (!queryName) return null
-
-  const searchQueries = Array.from(
-    new Set(
-      [
-        queryName,
-        queryName.replace(/（.*?）/g, "").trim(),
-        queryName.replace(/株式会社/g, "").trim(),
-        `${queryName} 株式会社`.trim(),
-        fallbackTicker.replace(/\.T$/i, ""),
-      ].filter((candidate) => candidate && candidate.length > 0),
-    ),
-  ) as string[]
-
-  for (const searchQuery of searchQueries) {
-    try {
-      const searchParams = new URLSearchParams({
-        action: "query",
-        list: "search",
-        srsearch: searchQuery,
-        srlimit: "3",
-        format: "json",
-        formatversion: "2",
-        redirects: "1",
-      })
-      const searchResponse = await fetch(`${WIKIPEDIA_API_ENDPOINT}?${searchParams.toString()}`, {
-        headers: {
-          "User-Agent": WIKIPEDIA_USER_AGENT,
-        },
-        next: { revalidate: 60 * 60 * 24 },
-      })
-
-      if (!searchResponse.ok) {
-        continue
-      }
-
-      const searchData = await searchResponse.json()
-      const titles: string[] = Array.isArray(searchData?.query?.search)
-        ? searchData.query.search
-            .map((entry: { title?: string }) => entry?.title)
-            .filter((title: unknown): title is string => typeof title === "string" && title.trim().length > 0)
-        : []
-
-      for (const title of titles.slice(0, 3)) {
-        try {
-          const parseParams = new URLSearchParams({
-            action: "parse",
-            page: title,
-            prop: "wikitext",
-            format: "json",
-            formatversion: "2",
-            redirects: "1",
-          })
-          const parseResponse = await fetch(`${WIKIPEDIA_API_ENDPOINT}?${parseParams.toString()}`, {
-            headers: {
-              "User-Agent": WIKIPEDIA_USER_AGENT,
-            },
-            next: { revalidate: 60 * 60 * 24 },
-          })
-
-          if (!parseResponse.ok) continue
-          const parseData = await parseResponse.json()
-          const wikitext = parseData?.parse?.wikitext
-          if (typeof wikitext !== "string") continue
-          const officer = extractRepresentativeFromWikitext(wikitext)
-          if (officer) return officer
-        } catch (error) {
-          console.error("Wikipedia parse error:", error)
-        }
-      }
-    } catch (error) {
-      console.error("Wikipedia search error:", error)
-    }
-  }
-
+async function fetchWikipediaRepresentative(_name: string | null, _fallbackTicker: string): Promise<OfficerInfo | null> {
+  console.info("Skipping Wikipedia representative lookup temporarily")
   return null
 }
 
@@ -471,121 +411,7 @@ interface ExternalCompanyProfile {
   officers: OfficerInfo[]
 }
 
-function mapQuoteSummaryResult(result: Record<string, any> | undefined, fallbackTicker: string): ExternalCompanyProfile | null {
-  if (!result) return null
-  const node = result?.quoteSummary?.result?.[0] ?? result
-  if (!node) return null
-  const price = node.price as Record<string, any> | undefined
-  const summaryProfile = node.summaryProfile as Record<string, any> | undefined
-  const assetProfile = node.assetProfile as Record<string, any> | undefined
-
-  const symbol =
-    typeof price?.symbol === "string" && price.symbol.trim().length > 0 ? price.symbol.trim() : fallbackTicker
-  const longNameCandidate = typeof price?.longName === "string" ? price.longName : undefined
-  const shortNameCandidate = typeof price?.shortName === "string" ? price.shortName : undefined
-  const industryCandidate =
-    typeof summaryProfile?.industry === "string"
-      ? summaryProfile.industry
-      : typeof assetProfile?.industry === "string"
-        ? assetProfile.industry
-        : null
-  const sectorCandidate =
-    typeof summaryProfile?.sector === "string"
-      ? summaryProfile.sector
-      : typeof assetProfile?.sector === "string"
-        ? assetProfile.sector
-        : null
-  const headquarters =
-    formatHeadquarters(summaryProfile) ??
-    formatHeadquarters(assetProfile) ??
-    null
-  const website = normalizeWebsite(summaryProfile?.website ?? assetProfile?.website)
-
-  const officers: OfficerInfo[] = Array.isArray(assetProfile?.companyOfficers)
-    ? assetProfile.companyOfficers
-        .filter((officer: any) => typeof officer === "object" && officer !== null)
-        .map((officer: any) => ({
-          name: typeof officer?.name === "string" ? officer.name.trim() : null,
-          title: typeof officer?.title === "string" ? officer.title.trim() : null,
-        }))
-        .filter((officer: OfficerInfo) => officer.name !== null || officer.title !== null)
-    : []
-
-  return {
-    symbol,
-    longName: longNameCandidate ?? shortNameCandidate ?? null,
-    shortName: shortNameCandidate ?? null,
-    industry: industryCandidate,
-    sector: sectorCandidate,
-    headquarters,
-    website,
-    officers,
-  }
-}
-
-async function fetchCompanyProfile(ticker: string): Promise<ExternalCompanyProfile | null> {
-  if (!ticker) return null
-  const rapidApiKey = process.env.RAPIDAPI_KEY
-
-  if (rapidApiKey) {
-    try {
-      const params = new URLSearchParams({
-        symbol: ticker,
-        region: ticker.toUpperCase().endsWith(".T") ? "JP" : "US",
-      })
-      const response = await fetch(`${APIDOJO_PROFILE_ENDPOINT}?${params.toString()}`, {
-        headers: {
-          "X-RapidAPI-Key": rapidApiKey,
-          "X-RapidAPI-Host": RAPIDAPI_HOST,
-        },
-        next: { revalidate: 60 * 10 },
-      })
-
-      if (response.ok) {
-        const payload = await response.json()
-        const mapped = mapQuoteSummaryResult(payload as Record<string, any>, ticker)
-        if (mapped) {
-          if (mapped.officers.length === 0) {
-            const wikiOfficer = await fetchWikipediaRepresentative(mapped.longName ?? mapped.shortName ?? ticker, ticker)
-            if (wikiOfficer) mapped.officers = [wikiOfficer]
-          }
-          return mapped
-        }
-      } else {
-        const bodyText = await response.text().catch(() => "")
-        console.error("RapidAPI Yahoo Finance error:", response.status, bodyText.slice(0, 200))
-      }
-    } catch (error) {
-      console.error("RapidAPI Yahoo Finance fetch error:", error)
-    }
-  }
-
-  try {
-    const response = await fetch(
-      `${YAHOO_FINANCE_ENDPOINT}/${encodeURIComponent(ticker)}?modules=price,summaryProfile,assetProfile`,
-      {
-        headers: YAHOO_HEADERS,
-        next: { revalidate: 60 * 10 },
-      },
-    )
-
-    if (!response.ok) {
-      return null
-    }
-
-    const payload = await response.json()
-    const mapped = mapQuoteSummaryResult(payload, ticker)
-    if (mapped) {
-      if (mapped.officers.length === 0) {
-        const wikiOfficer = await fetchWikipediaRepresentative(mapped.longName ?? mapped.shortName ?? ticker, ticker)
-        if (wikiOfficer) mapped.officers = [wikiOfficer]
-      }
-      return mapped
-    }
-  } catch (error) {
-    console.error("Company profile fetch error:", error)
-  }
-
+async function fetchCompanyProfile(_ticker: string): Promise<ExternalCompanyProfile | null> {
   return null
 }
 
@@ -602,6 +428,10 @@ function findMockData(identifier: string) {
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const identifier = searchParams.get("ticker") ?? searchParams.get("q")
+  const nocacheParam = searchParams.get("nocache")
+  const skipCache =
+    typeof nocacheParam === "string" &&
+    ["1", "true", "yes"].includes(nocacheParam.trim().toLowerCase())
 
   if (!identifier) {
     return NextResponse.json({ error: "会社名または証券コードを入力してください" }, { status: 400 })
@@ -620,6 +450,9 @@ export async function GET(request: NextRequest) {
   const hintTicker = alias?.ticker ?? tickerLikeCandidate
   const hintCompany = alias?.company
   const cacheKey = (hintTicker ?? normalized).toLowerCase()
+  if (skipCache) {
+    insightsCache.delete(cacheKey)
+  }
 
   // Check if mock data exists
   const mockIdentifierCandidates = [normalized]
@@ -685,16 +518,16 @@ export async function GET(request: NextRequest) {
   }
 
   const cached = insightsCache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+  if (!skipCache && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return NextResponse.json(cached.data)
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.OPENAI_API_KEY
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Gemini APIキーが設定されていません。環境変数 GEMINI_API_KEY を設定してください。" },
+        { error: "OpenAI APIキーが設定されていません。環境変数 OPENAI_API_KEY を設定してください。" },
         { status: 500 },
       )
     }
@@ -772,27 +605,33 @@ export async function GET(request: NextRequest) {
   "score": 70,
   "commentary": "→スコアの簡潔な説明文。"
 }`
-    const primaryModelId = "gemini-2.5-flash-lite"
-    const fallbackModelId = "gemini-2.0-flash"
-    const requestBody = JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
-      generationConfig: {
+    const primaryModelId = "gpt-5-nano"
+    const fallbackModelId = "gpt-4o-mini"
+
+    const buildRequestBody = (modelId: string) =>
+      JSON.stringify({
+        model: modelId,
+        messages: [
+          {
+            role: "system",
+            content: "You are a financial analyst assistant. Follow the provided instructions precisely and respond in Japanese only.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
         temperature: 0.7,
-      },
-    })
+      })
 
     const callModel = (modelId: string) =>
-      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
+      fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
-        body: requestBody,
+        body: buildRequestBody(modelId),
       })
 
     let response = await callModel(primaryModelId)
@@ -804,12 +643,16 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json()
-      console.error("Gemini API error:", errorData)
-      throw new Error(`Gemini API error: ${response.status}`)
+      console.error("OpenAI API error:", errorData)
+      if (response.status === 429) {
+        throw new Error("OpenAI APIのレート制限に達しました。少し時間を置いて再試行してください。")
+      }
+      throw new Error(`OpenAI API error: ${response.status}`)
     }
 
     const data = await response.json()
-    const text = data.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("").trim()
+    const rawContent = data.choices?.[0]?.message?.content
+    const text = (typeof rawContent === "string" ? rawContent : Array.isArray(rawContent) ? rawContent.join("") : "").trim()
 
     if (!text) {
       throw new Error("AI応答が空です")
@@ -841,23 +684,103 @@ export async function GET(request: NextRequest) {
     const sanitizedCompanyName = sanitizeWikiValue(enforcedCompanyName)
     analysis.company = sanitizedCompanyName ?? enforcedCompanyName
     analysis.ticker = enforcedTicker
-    let primaryOfficer = selectPrimaryOfficer(externalProfile?.officers ?? [])
-    if (!primaryOfficer) {
-      const wikiOfficer = await fetchWikipediaRepresentative(enforcedCompanyName, enforcedTicker)
-      if (wikiOfficer) {
-        primaryOfficer = wikiOfficer
-        if (externalProfile) {
-          externalProfile.officers = [...(externalProfile.officers ?? []), wikiOfficer]
-        }
-      }
-    }
-    const representativeOverride = composeRepresentative(primaryOfficer?.name, primaryOfficer?.title)
-    if (representativeOverride) {
-      analysis.representative = representativeOverride
-    } else if (typeof analysis.representative === "string") {
+
+    let aiRepresentative: string | null = null
+    if (typeof analysis.representative === "string" && analysis.representative.trim().length > 0) {
       const sanitizedRepresentative = sanitizeWikiValue(analysis.representative)
       if (sanitizedRepresentative) {
         analysis.representative = sanitizedRepresentative
+        aiRepresentative = sanitizedRepresentative
+      } else {
+        delete analysis.representative
+      }
+    } else {
+      delete analysis.representative
+    }
+
+    const edinetInfo = await fetchEdinetCompanyInfoByTicker(enforcedTicker, { forceRefresh: skipCache })
+    const edinetRepresentative = edinetInfo?.representativeName
+      ? composeRepresentative(edinetInfo.representativeName, edinetInfo.representativeTitle ?? null)
+      : null
+
+    const wikipediaOfficer = await fetchWikipediaRepresentative(enforcedCompanyName, enforcedTicker)
+    let primaryOfficer = selectPrimaryOfficer(externalProfile?.officers ?? [])
+    if (!primaryOfficer && wikipediaOfficer) {
+      primaryOfficer = wikipediaOfficer
+      if (externalProfile) {
+        externalProfile.officers = [...(externalProfile.officers ?? []), wikipediaOfficer]
+      }
+    }
+    const representativeOverride = composeRepresentative(primaryOfficer?.name, primaryOfficer?.title)
+    const wikipediaRepresentative = composeRepresentative(wikipediaOfficer?.name, wikipediaOfficer?.title)
+    const fmpRepresentative = externalProfile?.officers
+      ? composeRepresentative(selectPrimaryOfficer(externalProfile.officers)?.name, selectPrimaryOfficer(externalProfile.officers)?.title)
+      : null
+    const normalizedAI = normalizeRepresentativeForComparison(aiRepresentative)
+    const normalizedEdinet = normalizeRepresentativeForComparison(edinetRepresentative)
+    const normalizedWikipedia = normalizeRepresentativeForComparison(wikipediaRepresentative)
+    const normalizedFmp = normalizeRepresentativeForComparison(fmpRepresentative)
+    const normalizedOverride = normalizeRepresentativeForComparison(representativeOverride)
+
+    let finalRepresentative: string | null = null
+    if (representativeOverride) {
+      finalRepresentative = representativeOverride
+    } else if (edinetRepresentative) {
+      finalRepresentative =
+        !normalizedAI || (normalizedEdinet && normalizedAI !== normalizedEdinet)
+          ? edinetRepresentative
+          : aiRepresentative ?? edinetRepresentative
+    } else if (wikipediaRepresentative) {
+      finalRepresentative =
+        !normalizedAI || (normalizedWikipedia && normalizedAI !== normalizedWikipedia)
+          ? wikipediaRepresentative
+          : aiRepresentative ?? wikipediaRepresentative
+    } else if (fmpRepresentative) {
+      finalRepresentative =
+        !normalizedAI || (normalizedFmp && normalizedAI !== normalizedFmp)
+          ? fmpRepresentative
+          : aiRepresentative ?? fmpRepresentative
+    } else if (aiRepresentative) {
+      finalRepresentative = aiRepresentative
+    }
+
+    if (!finalRepresentative) {
+      finalRepresentative = `情報未確認（${currentYear}年時点）`
+    }
+    analysis.representative = finalRepresentative
+
+    const normalizedFinalRepresentative = normalizeRepresentativeForComparison(analysis.representative)
+    const usedEdinet =
+      normalizedFinalRepresentative && normalizedEdinet && normalizedFinalRepresentative === normalizedEdinet
+    const usedWikipedia =
+      normalizedFinalRepresentative && normalizedWikipedia && normalizedFinalRepresentative === normalizedWikipedia
+    const usedFmp = normalizedFinalRepresentative && normalizedFmp && normalizedFinalRepresentative === normalizedFmp
+    const usedOverride =
+      normalizedFinalRepresentative && normalizedOverride && normalizedFinalRepresentative === normalizedOverride
+    const usedAI = normalizedFinalRepresentative && normalizedAI && normalizedFinalRepresentative === normalizedAI
+
+    if (!usedOverride && !usedEdinet && !usedWikipedia && !usedFmp && usedAI) {
+      analysis.representative = `情報未確認（${currentYear}年時点）`
+    }
+
+    if (edinetInfo?.headOfficeAddress) {
+      const edinetAddress = edinetInfo.headOfficeAddress.replace(/\s+/g, " ").trim()
+      if (edinetAddress.length > 0) {
+        analysis.location = edinetAddress
+      }
+    }
+
+    if (edinetInfo?.capitalStock) {
+      const formattedCapital = formatCapitalAmount(edinetInfo.capitalStock)
+      if (formattedCapital) {
+        analysis.capital = formattedCapital
+      }
+    }
+
+    if (edinetInfo?.establishedDate) {
+      const established = edinetInfo.establishedDate.replace(/\s+/g, " ").trim()
+      if (established.length > 0) {
+        analysis.founded = established
       }
     }
 

@@ -349,34 +349,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="border-b border-gray-200">
-        <div className="flex items-center justify-between max-w-7xl mx-auto px-6 py-4">
-          <Link href="/" className="text-xl font-semibold text-gray-900">
-            AIDE
-          </Link>
-          {user ? (
-            <div className="flex items-center gap-3">
-              <Link
-                href="/account"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-                title="アカウント設定"
-              >
-                {user.displayName?.slice(0, 2) ?? user.email?.slice(0, 2)?.toUpperCase() ?? "AI"}
-              </Link>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" className="font-medium" asChild>
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-              <Button className="rounded-full font-medium" asChild>
-                <Link href="/sign-up">Sign up</Link>
-              </Button>
-            </div>
-          )}
-        </div>
-      </header>
-
       <section className="max-w-7xl mx-auto px-6 py-16 text-center">
         <h2 className="text-5xl font-semibold text-gray-900 mb-4">企業を比較する。</h2>
         <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
