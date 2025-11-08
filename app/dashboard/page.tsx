@@ -1,19 +1,19 @@
 "use client"
 
 import Image from "next/image"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "../providers"
 import { firestore } from "@/lib/firebase"
+import { cn } from "@/lib/utils"
 
 interface CompanyInsight {
   company: string
   ticker: string
-  founded: string
   representative: string
   location: string
   capital: string
@@ -62,7 +62,8 @@ function ensureHttps(url?: string | null): string | undefined {
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
-  const { user } = useAuth()
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [tickers, setTickers] = useState(["", "", ""])
   const [companies, setCompanies] = useState<(CompanyInsight | null)[]>([null, null, null])
   const [loading, setLoading] = useState([false, false, false])
@@ -130,6 +131,25 @@ export default function DashboardPage() {
       return nextEntries
     })
   }, [])
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      const redirect = encodeURIComponent("/dashboard")
+      router.replace(`/sign-in?redirect=${redirect}`)
+    }
+  }, [authLoading, router, user])
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="flex items-center gap-3 text-sm text-slate-200">
+          <span className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          ログイン状態を確認しています…
+        </div>
+      </div>
+    )
+  }
 
   const loadCompanyInfo = useCallback(async (ticker: string, targetIndex: number): Promise<void> => {
     const symbol = ticker.trim()
@@ -347,102 +367,121 @@ export default function DashboardPage() {
     [analyzeCompany, tickers],
   )
 
+  const primaryPanelClass =
+    "rounded-4xl border border-white/30 bg-white/70 text-foreground shadow-[0_30px_80px_rgba(2,6,23,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/5 dark:text-white"
+  const secondaryPanelClass =
+    "rounded-3xl border border-white/25 bg-white/55 text-foreground shadow-[0_20px_60px_rgba(2,6,23,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-white"
+  const inputClasses =
+    "h-12 rounded-2xl border border-white/50 bg-white/80 text-foreground placeholder:text-muted-foreground shadow-[inset_0_1px_2px_rgba(2,6,23,0.18)] transition focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/10 dark:text-white dark:placeholder:text-white/60"
+  const companyCardClass =
+    "rounded-4xl border border-white/35 bg-white/75 text-foreground shadow-[0_30px_80px_rgba(2,6,23,0.15)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/5 dark:text-white"
+  const emptyCompanyCardClass =
+    "rounded-4xl border border-dashed border-white/40 bg-white/20 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl dark:border-white/15 dark:bg-white/5 dark:text-white/50"
+  const dividerClass = "my-6 w-full border-t border-white/60 dark:border-white/10"
+  const bulletClass = "absolute left-0 top-2 h-1.5 w-1.5 rounded-full bg-slate-400/70 dark:bg-white/60"
+
   return (
-    <div className="min-h-screen bg-white">
-      <section className="max-w-7xl mx-auto px-6 py-16 text-center">
-        <h2 className="text-5xl font-semibold text-gray-900 mb-4">企業を比較する。</h2>
-        <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
-          証券コードを入力して、AIによる投資判断材料を並べて比較できます。
+    <div className="min-h-screen bg-background text-foreground transition-colors dark:bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.95),rgba(2,6,23,1))]">
+      <section className="mx-auto max-w-6xl px-6 pb-16 pt-20 text-center">
+        <p className="text-xs uppercase tracking-[0.5em] text-slate-500 dark:text-slate-300">AIDE DASHBOARD</p>
+        <h2 className="mt-4 text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl dark:text-white">
+          企業インサイトを、並べて比較する。
+        </h2>
+        <p className="mx-auto mt-6 max-w-2xl text-base text-slate-600 dark:text-slate-200/80">
+          証券コードを入力すると、AI が代表者・所在地・資本金を含む要約を即座に生成します。
+          最大 3 社を同時に並べ、投資判断に役立つ視点を整えましょう。
         </p>
         {showSettingsSummary && (
-          <p className="mb-10 text-sm text-gray-500">
-            保存済みの比較セット：{" "}
-            <span className="font-medium text-gray-700">{settings.defaultTickers.replace(/,/g, " / ")}</span>
+          <p className="mt-6 text-sm text-muted-foreground">
+            保存済みの比較セット：
+            <span className="ml-2 inline-flex rounded-full bg-primary/10 px-3 py-1 text-primary dark:bg-white/10 dark:text-white">
+              {settings.defaultTickers.replace(/,/g, " / ")}
+            </span>
           </p>
         )}
 
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className={cn("mx-auto mt-10 max-w-5xl p-6", primaryPanelClass)}>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {[0, 1, 2].map((index) => (
-              <div key={index} className="space-y-2">
+              <div key={index} className="space-y-3">
                 <Input
                   type="text"
                   placeholder="例：9831.T または ヤマダホールディングス"
                   value={tickers[index]}
                   onChange={(e) => setTickers((prev) => prev.map((t, i) => (i === index ? e.target.value : t)))}
                   onKeyDown={(e) => e.key === "Enter" && analyzeCompany(index)}
-                  className="h-12 text-base rounded-full border-gray-300"
+                  className={cn(inputClasses)}
                   disabled={loading[index]}
                 />
                 <Button
                   onClick={() => analyzeCompany(index)}
                   disabled={loading[index] || !tickers[index].trim()}
-                  className="w-full h-10 rounded-full bg-blue-600 hover:bg-blue-700 font-medium text-white text-sm"
+                  className="h-11 w-full rounded-2xl"
                 >
                   {loading[index] ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span className="h-4 w-4 rounded-full border-2 border-slate-900 border-t-transparent animate-spin" />
                       分析中
                     </span>
                   ) : (
                     "分析"
                   )}
                 </Button>
-                {errors[index] && <p className="text-xs text-red-600">{errors[index]}</p>}
+                {errors[index] && <p className="text-xs text-red-500 dark:text-red-300">{errors[index]}</p>}
               </div>
             ))}
           </div>
-          <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 text-left shadow-sm">
-            <p className="text-sm font-semibold text-gray-900">主な企業セット</p>
-            <p className="mt-1 text-xs text-gray-500">クリックすると空いている枠にティッカーが入力されます。</p>
-            {settings.preferredMarket === "us" ? (
-              <p className="mt-2 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-                米国市場を優先表示中
-              </p>
-            ) : (
-              <p className="mt-2 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-                国内市場を優先表示中
-              </p>
-            )}
-            <div className="mt-4 flex flex-wrap gap-3">
-              {suggestedCompanies.map((company) => (
-                <Button
-                  key={company.ticker}
-                  type="button"
-                  variant="outline"
-                  className="rounded-full border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:border-blue-400 hover:text-blue-600"
-                  onClick={() => handleSuggestedSelect(company.ticker)}
-                >
-                  {company.name}
-                </Button>
-              ))}
+        <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">おすすめセット</p>
+              <p className="mt-1 text-xs text-muted-foreground">クリックすると空枠にティッカーが差し込まれます。</p>
             </div>
+            <span className="inline-flex items-center rounded-full border border-input/60 px-3 py-1 text-xs font-semibold text-muted-foreground">
+              {settings.preferredMarket === "us" ? "米国市場を優先表示中" : "国内市場を優先表示中"}
+            </span>
           </div>
-          {history.length > 0 && (
-            <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 text-left shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">最近の入力</p>
-              <p className="mt-1 text-xs text-gray-500">過去に分析したティッカーから再分析できます。</p>
-              <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
+            {suggestedCompanies.map((company) => (
+              <Button
+                key={company.ticker}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full border-input px-4 py-2 text-xs font-medium text-foreground/80"
+                onClick={() => handleSuggestedSelect(company.ticker)}
+              >
+                {company.name}
+              </Button>
+            ))}
+          </div>
+        </div>
+        {history.length > 0 && (
+          <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
+            <p className="text-sm font-semibold">最近の入力</p>
+            <p className="mt-1 text-xs text-muted-foreground">過去に分析したティッカーから再分析できます。</p>
+              <div className="mt-4 flex flex-wrap gap-3 text-xs">
                 {history.map((entry) => (
                   <Button
-                    key={entry.ticker}
-                    type="button"
+                    key={`${entry.ticker}-${entry.company ?? "unknown"}`}
                     variant="outline"
-                    className="rounded-full border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:border-blue-400 hover:text-blue-600"
+                    size="sm"
+                    className="rounded-full border-input px-3 py-1 text-foreground/80"
                     onClick={() => handleSuggestedSelect(entry.ticker)}
                   >
-                    {entry.company ?? entry.ticker}
+                    <span className="font-medium">{entry.ticker}</span>
+                    {entry.company && <span className="ml-2 text-muted-foreground">{entry.company}</span>}
                   </Button>
                 ))}
               </div>
-            </div>
-          )}
+          </div>
+        )}
         </div>
       </section>
 
       {validCompanies.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 pb-24">
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+        <section className="mx-auto mt-12 max-w-6xl px-6 pb-24">
+          <div className="grid grid-cols-1 items-stretch gap-10 md:grid-cols-3">
             {companies.map((company, index) => {
               const websiteHref = company && company.website ? ensureHttps(company.website) ?? company.website : undefined
               const websiteLabel =
@@ -452,24 +491,20 @@ export default function DashboardPage() {
               const tickerLabel = company?.ticker?.trim()
               const companyName = company?.company?.trim()
               const badgeClass = company
-                ? "border-gray-300 text-gray-900"
-                : "border-gray-200 bg-gray-50 text-gray-400"
+                ? "border-white/50 bg-white/70 text-foreground shadow-sm backdrop-blur dark:border-white/20 dark:bg-white/10 dark:text-white"
+                : "border-dashed border-white/40 bg-white/40 text-muted-foreground dark:border-white/20 dark:bg-white/5 dark:text-white/50"
 
               return (
-                <div key={index} className="flex flex-col items-center gap-6">
+                <div key={index} className="flex h-full flex-col gap-6">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <div className={`inline-flex rounded-full border px-6 py-1 text-sm font-semibold ${badgeClass}`}>
                       {company ? tickerLabel || "ティッカー未取得" : "未入力"}
                     </div>
                     {company && (
-                      <div className="text-lg font-semibold text-gray-900">{companyName || "企業名情報なし"}</div>
+                      <div className="text-lg font-semibold text-foreground">{companyName || "企業名情報なし"}</div>
                     )}
                   </div>
-                  <div
-                    className={`w-full rounded-3xl border bg-white px-8 py-10 shadow-sm ${
-                      company ? "border-gray-300" : "border-dashed border-gray-200"
-                    }`}
-                  >
+                  <div className={cn("flex h-full w-full flex-col px-8 py-10", company ? companyCardClass : emptyCompanyCardClass)}>
                     {company ? (
                       <div className="flex flex-col items-center gap-8">
                         <div className="flex h-24 w-full items-center justify-center">
@@ -485,15 +520,15 @@ export default function DashboardPage() {
                             />
                           </div>
                         ) : (
-                            <span className="text-sm text-gray-400">ロゴが見つかりませんでした</span>
+                            <span className="text-sm text-muted-foreground">ロゴが見つかりませんでした</span>
                           )}
                         </div>
 
-                        <hr className="w-full border-gray-200" />
+                        <hr className={dividerClass} />
 
-                        <div className="w-full space-y-4 text-left text-sm leading-6 text-gray-900">
+                        <div className="w-full space-y-4 text-left text-sm leading-6 text-foreground">
                           {company.lastUpdated && (
-                            <div className="text-xs text-gray-500">更新時点: {company.lastUpdated}</div>
+                            <div className="text-xs text-muted-foreground">更新時点: {company.lastUpdated}</div>
                           )}
                           <div>
                             <span className="font-semibold">ティッカー：</span>
@@ -502,10 +537,6 @@ export default function DashboardPage() {
                           <div>
                             <span className="font-semibold">企業名：</span>
                             {companyName || "情報未取得"}
-                          </div>
-                          <div>
-                            <span className="font-semibold">設立：</span>
-                            {company.founded}
                           </div>
                           <div>
                             <span className="font-semibold">代表者名：</span>
@@ -536,7 +567,7 @@ export default function DashboardPage() {
                                 </span>
                               )}
                               {company.marketTime && (
-                                <span className="ml-2 text-xs text-gray-500">
+                                <span className="ml-2 text-xs text-muted-foreground">
                                   {new Date(company.marketTime).toLocaleString("ja-JP")}
                                   時点
                                 </span>
@@ -569,19 +600,19 @@ export default function DashboardPage() {
                             </div>
                           )}
                           {company.summary && (
-                            <p className="mt-2 text-sm leading-6 text-gray-600">{company.summary}</p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">{company.summary}</p>
                           )}
                         </div>
 
-                        <hr className="w-full border-gray-200" />
+                        <hr className={dividerClass} />
 
                         <div className="w-full space-y-6 text-left">
                           <section>
-                            <h5 className="mb-3 text-base font-semibold text-gray-900">強み</h5>
-                            <ul className="space-y-2 text-sm leading-6 text-gray-800">
+                            <h5 className="mb-3 text-base font-semibold text-foreground">強み</h5>
+                            <ul className="space-y-2 text-sm leading-6 text-foreground">
                               {company.strengths.map((strength, idx) => (
                                 <li key={idx} className="relative pl-4">
-                                  <span className="absolute left-0 top-2 h-1.5 w-1.5 rounded-full bg-gray-400" />
+                                  <span className={bulletClass} />
                                   {strength}
                                 </li>
                               ))}
@@ -589,11 +620,11 @@ export default function DashboardPage() {
                           </section>
 
                           <section>
-                            <h5 className="mb-3 text-base font-semibold text-gray-900">課題</h5>
-                            <ul className="space-y-2 text-sm leading-6 text-gray-800">
+                            <h5 className="mb-3 text-base font-semibold text-foreground">課題</h5>
+                            <ul className="space-y-2 text-sm leading-6 text-foreground dark:text-white/80">
                               {company.risks.map((risk, idx) => (
                                 <li key={idx} className="relative pl-4">
-                                  <span className="absolute left-0 top-2 h-1.5 w-1.5 rounded-full bg-gray-400" />
+                                  <span className={bulletClass} />
                                   {risk}
                                 </li>
                               ))}
@@ -601,11 +632,11 @@ export default function DashboardPage() {
                           </section>
 
                           <section>
-                            <h5 className="mb-3 text-base font-semibold text-gray-900">見通し</h5>
-                            <ul className="space-y-2 text-sm leading-6 text-gray-800">
+                            <h5 className="mb-3 text-base font-semibold text-foreground">見通し</h5>
+                            <ul className="space-y-2 text-sm leading-6 text-foreground dark:text-white/80">
                               {company.outlook.map((outlook, idx) => (
                                 <li key={idx} className="relative pl-4">
-                                  <span className="absolute left-0 top-2 h-1.5 w-1.5 rounded-full bg-gray-400" />
+                                  <span className={bulletClass} />
                                   {outlook}
                                 </li>
                               ))}
@@ -613,25 +644,23 @@ export default function DashboardPage() {
                           </section>
                         </div>
 
-                        <hr className="w-full border-gray-200" />
+                        <hr className={dividerClass} />
 
-                        <div className="w-full text-center">
-                          <p className="text-base font-semibold text-gray-900">総合スコア</p>
+                        <div className="mt-auto w-full text-center">
+                          <p className="text-base font-semibold text-foreground">総合スコア</p>
                           <p className={`text-2xl font-bold ${getScoreColor(company.score)}`}>
                             {company.score}
-                            <span className="ml-1 text-sm font-medium text-gray-500">/ 100</span>
+                            <span className="ml-1 text-sm font-medium text-muted-foreground">/ 100</span>
                           </p>
-                          <p className="mt-2 text-sm text-gray-600">{company.commentary}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">{company.commentary}</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 text-sm text-gray-400">
-                        <div className="h-20 w-20 rounded-full border border-dashed border-gray-200" />
-                        <p className="text-center leading-6">
-                          企業を入力すると
-                          <br />
-                          情報が表示されます
-                        </p>
+                      <div className="flex h-full flex-col items-center justify-center gap-4 text-center text-sm leading-6">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-white/40 dark:border-white/15">
+                          <span className="text-muted-foreground">＋</span>
+                        </div>
+                        <p>企業を入力すると情報が表示されます</p>
                       </div>
                     )}
                   </div>
@@ -643,9 +672,9 @@ export default function DashboardPage() {
       )}
 
       {validCompanies.length === 0 && (
-        <div className="text-center py-24 px-6">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-6">
-            <svg className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="px-6 py-24 text-center text-slate-600 dark:text-white/80">
+          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 dark:border-white/30">
+            <svg className="h-10 w-10 text-slate-400 dark:text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -654,8 +683,8 @@ export default function DashboardPage() {
               />
             </svg>
           </div>
-          <h3 className="text-2xl font-semibold text-gray-900 mb-3">企業を追加して比較を開始</h3>
-          <p className="text-base text-gray-600 max-w-md mx-auto leading-relaxed">
+          <h3 className="mb-3 text-2xl font-semibold text-slate-900 dark:text-white">企業を入力して比較を開始</h3>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-500 dark:text-white/70">
             証券コードを入力すると、AIが企業分析を生成します。
           </p>
         </div>

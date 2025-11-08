@@ -54,6 +54,12 @@ export default function AccountPage() {
   const [initializing, setInitializing] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const glassPanelClass =
+    "rounded-3xl border border-white/30 bg-white/70 p-8 text-foreground shadow-[0_30px_80px_rgba(2,6,23,0.15)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/5 dark:text-white"
+  const glassFieldClass =
+    "rounded-2xl border border-white/30 bg-white/60 p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] backdrop-blur-xl dark:border-white/15 dark:bg-white/5"
+  const glassInputClass =
+    "rounded-2xl border border-white/40 bg-white/80 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-white/10 dark:text-white dark:placeholder:text-white/60"
 
   const settingsRef = useMemo(() => (user ? doc(firestore, "userSettings", user.uid) : null), [user])
 
@@ -150,10 +156,10 @@ export default function AccountPage() {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
-        <div className="w-full max-w-sm rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-gray-900">ログインが必要です</h1>
-          <p className="mt-3 text-sm text-gray-600">アカウント情報を閲覧するにはサインインしてください。</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+        <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-10 text-center shadow-sm">
+          <h1 className="text-xl font-semibold">ログインが必要です</h1>
+          <p className="mt-3 text-sm text-muted-foreground">アカウント情報を閲覧するにはサインインしてください。</p>
           <div className="mt-6 flex flex-col gap-3">
             <Button asChild className="rounded-full font-semibold">
               <Link href="/sign-in">Sign in</Link>
@@ -172,12 +178,12 @@ export default function AccountPage() {
   const planLabel = plan === "pro" ? "Pro プラン" : plan === "free" ? "Free プラン" : "読み込み中..."
 
   return (
-    <div className="bg-white">
+    <div className="bg-background text-foreground">
       <main className="mx-auto flex max-w-4xl flex-col gap-10 px-6 py-16">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">アカウント</h1>
-            <p className="mt-2 text-sm text-gray-600">AIDE アカウントの基本情報と設定を管理できます。</p>
+            <h1 className="text-2xl font-semibold">アカウント</h1>
+            <p className="mt-2 text-sm text-muted-foreground">AIDE アカウントの基本情報と設定を管理できます。</p>
           </div>
           <div className="flex items-center gap-3">
             {plan === "pro" ? (
@@ -189,7 +195,7 @@ export default function AccountPage() {
                 <Link href="/checkout">アップグレード</Link>
               </Button>
             ) : null}
-            <Button variant="ghost" size="sm" className="rounded-full font-medium text-gray-600" onClick={async () => {
+            <Button variant="outline" size="sm" className="rounded-full font-medium" onClick={async () => {
               await signOut(auth)
               router.replace("/")
             }}>
@@ -198,9 +204,9 @@ export default function AccountPage() {
           </div>
         </div>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">プラン状況</h2>
-          <p className="mt-2 text-sm text-gray-600">
+        <section className={glassPanelClass}>
+          <h2 className="text-lg font-semibold">プラン状況</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             現在のプラン: <span className="font-medium">{planLabel}</span>
           </p>
           {plan === "free" ? (
@@ -210,31 +216,35 @@ export default function AccountPage() {
               </Button>
             </div>
           ) : plan === "pro" ? (
-            <p className="mt-4 text-sm text-gray-500">アップグレード済みです。請求情報の変更や解約はサポートチームまでご連絡ください。</p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              アップグレード済みです。請求情報の変更や解約はサポートチームまでご連絡ください。
+            </p>
           ) : null}
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+        <section className={glassPanelClass}>
           <dl className="mt-8 grid gap-6 md:grid-cols-2">
             {profileFields.map((field) => (
-              <div key={field.label} className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{field.label}</dt>
-                <dd className="mt-2 text-sm text-gray-900">{field.value({ name: user.displayName, email: user.email })}</dd>
+              <div key={field.label} className={glassFieldClass}>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{field.label}</dt>
+                <dd className="mt-2 text-sm text-foreground">
+                  {field.value({ name: user.displayName, email: user.email })}
+                </dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+        <section className={glassPanelClass}>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">比較設定</h2>
-              <p className="mt-2 text-sm text-gray-600">
+              <h2 className="text-xl font-semibold">比較設定</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
                 ダッシュボードや推奨コンテンツで優先的に表示したい条件を記録します。
               </p>
             </div>
             {settings.updatedAt && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 最終更新：{settings.updatedAt.toLocaleString("ja-JP", { hour12: false })}
               </p>
             )}
@@ -249,28 +259,28 @@ export default function AccountPage() {
                   placeholder="例: 9831.T, 7419.T, 3048.T"
                   value={settings.defaultTickers}
                   onChange={(event) => handleFieldChange("defaultTickers", event.target.value)}
-                  className="min-h-[96px] resize-none"
+                  className={`min-h-[96px] resize-none ${glassInputClass}`}
                   disabled={initializing}
                 />
-                <p className="text-xs text-gray-500">カンマ区切りで最大 6 件まで入力できます。</p>
+                <p className="text-xs text-muted-foreground">カンマ区切りで最大 6 件まで入力できます。</p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="preferredMarket">優先するマーケット</Label>
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <div className={`${glassFieldClass} space-y-2`}>
                   <select
                     id="preferredMarket"
                     value={settings.preferredMarket}
                     onChange={(event) =>
                       handleFieldChange("preferredMarket", event.target.value === "us" ? "us" : "jp")
                     }
-                    className="w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-full border border-white/40 bg-transparent px-4 py-2 text-sm text-foreground shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] focus:border-primary focus:outline-none dark:border-white/20 dark:text-white"
                     disabled={initializing}
                   >
                     <option value="jp">国内市場（東証）</option>
                     <option value="us">海外市場（米国株）</option>
                   </select>
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     ダッシュボードの推奨企業やニュースの優先順位が変わります。
                   </p>
                 </div>
@@ -278,10 +288,10 @@ export default function AccountPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="flex items-start justify-between rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <div className={`${glassFieldClass} flex items-start justify-between`}>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">ウィークリーダイジェスト</p>
-                  <p className="mt-1 text-xs text-gray-600">週次で主要比較結果と市況トレンドをメールでお届けします。</p>
+                  <p className="text-sm font-semibold text-foreground">ウィークリーダイジェスト</p>
+                  <p className="mt-1 text-xs text-muted-foreground">週次で主要比較結果と市況トレンドをメールでお届けします。</p>
                 </div>
                 <Switch
                   checked={settings.subscribeDigest}
@@ -290,10 +300,10 @@ export default function AccountPage() {
                 />
               </div>
 
-              <div className="flex items-start justify-between rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <div className={`${glassFieldClass} flex items-start justify-between`}>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">新機能のお知らせ</p>
-                  <p className="mt-1 text-xs text-gray-600">プロダクトアップデートやリリース注記を受け取ります。</p>
+                  <p className="text-sm font-semibold text-foreground">新機能のお知らせ</p>
+                  <p className="mt-1 text-xs text-muted-foreground">プロダクトアップデートやリリース注記を受け取ります。</p>
                 </div>
                 <Switch
                   checked={settings.notifyProductUpdates}
@@ -310,19 +320,20 @@ export default function AccountPage() {
                 placeholder="社内で共有したいメモやカスタム指標など"
                 value={settings.notes}
                 onChange={(event) => handleFieldChange("notes", event.target.value)}
+                className={glassInputClass}
                 disabled={initializing}
               />
             </div>
 
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 設定はアカウントに紐づいて保存され、ダッシュボードの比較候補や推奨ティッカーに反映されます。
               </p>
               <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-full font-semibold"
+                  className="rounded-full border border-white/40 bg-white/20 px-6 font-semibold text-foreground shadow-[0_15px_35px_rgba(2,6,23,0.18)] backdrop-blur hover:bg-white/30 dark:border-white/15 dark:bg-white/10 dark:text-white"
                   disabled={!dirty || initializing || saving}
                   onClick={() => {
                     setSettings(defaultSettings)
@@ -333,7 +344,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   type="submit"
-                  className="rounded-full font-semibold"
+                  className="rounded-full px-6 font-semibold shadow-[0_20px_50px_rgba(59,130,246,0.45)]"
                   disabled={!dirty || initializing || saving}
                 >
                   {saving ? "保存中..." : "設定を保存"}

@@ -237,20 +237,22 @@ export default function LandingPage() {
 
   const activeConfig = heroSnapshots[activeCompanyIndex]
   const activeCompany = heroInsights[activeConfig.ticker] ?? activeConfig
+  const glassButtonClass =
+    "rounded-full border border-white/40 bg-white/30 px-6 font-semibold text-foreground shadow-[0_18px_45px_rgba(2,6,23,0.18)] backdrop-blur-lg hover:bg-white/40 dark:border-white/15 dark:bg-white/10 dark:text-white"
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background text-foreground">
       <main>
-        <section className="border-b border-gray-200 bg-linear-to-b from-white to-gray-50">
-          <div className="max-w-6xl mx-auto grid gap-12 px-6 py-24 md:grid-cols-2 md:items-center">
+        <section className="border-b border-border/70 bg-gradient-to-b from-background to-muted/40 dark:from-slate-950 dark:to-slate-900">
+          <div className="mx-auto grid max-w-6xl gap-12 px-6 py-24 md:grid-cols-2 md:items-center">
             <div className="space-y-8">
-              <p className="inline-flex items-center rounded-full bg-blue-50 px-4 py-1 text-sm font-medium text-blue-600">
+              <p className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
                 投資先の比較を、もっと簡単に
               </p>
-              <h1 className="text-4xl font-semibold text-gray-900 md:text-5xl">
+              <h1 className="text-4xl font-semibold md:text-5xl">
                 企業の強み・リスクをAIが要約。比較と判断をこれ1つで。
               </h1>
-              <p className="text-lg leading-8 text-gray-600">
+              <p className="text-lg leading-8 text-muted-foreground">
                 証券コードを入力するだけで、競合との相対的な立ち位置や押さえるべきポイントを抽出。投資メモづくりやチームでの検討にすぐ活用できます。
               </p>
               <div className="flex flex-wrap gap-4">
@@ -262,7 +264,7 @@ export default function LandingPage() {
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
-                    <Button size="lg" variant="outline" className="rounded-full px-6 font-semibold" asChild>
+                    <Button size="lg" variant="outline" className={glassButtonClass} asChild>
                       <Link
                         href={{
                           pathname: "/dashboard",
@@ -289,16 +291,16 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="space-y-6 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-              <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="space-y-6 rounded-3xl border border-border bg-card p-8 text-card-foreground shadow-xl shadow-black/5 dark:shadow-black/40">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div>
-                  <span className="font-semibold text-gray-900">比較対象</span>
-                  <p className="mt-1 text-gray-500">
+                  <span className="font-semibold text-foreground">比較対象</span>
+                  <p className="mt-1 text-muted-foreground">
                     {heroSnapshots.map((company) => company.company).join(" / ")}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400 whitespace-nowrap font-medium">
+                  <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
                     {activeCompanyIndex + 1} / {heroSnapshots.length}
                   </span>
                   <div className="flex items-center gap-2">
@@ -306,7 +308,7 @@ export default function LandingPage() {
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 rounded-full border-gray-300"
+                      className="h-9 w-9 rounded-full border-input"
                       onClick={() =>
                         setActiveCompanyIndex((prev) => (prev - 1 + heroSnapshots.length) % heroSnapshots.length)
                       }
@@ -317,7 +319,7 @@ export default function LandingPage() {
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 rounded-full border-gray-300"
+                      className="h-9 w-9 rounded-full border-input"
                       onClick={() => setActiveCompanyIndex((prev) => (prev + 1) % heroSnapshots.length)}
                     >
                       <ChevronRight className="h-4 w-4" />
@@ -325,14 +327,12 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex h-full min-h-80 flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex h-full min-h-80 flex-col rounded-2xl border border-border bg-card/90 p-6 shadow-sm">
                 <div>
-                  <div>
-                    <p className="text-base font-semibold text-gray-900">{activeCompany.company}</p>
-                    <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
-                      Score {activeCompany.score} / 100
-                    </p>
-                  </div>
+                  <p className="text-base font-semibold text-foreground">{activeCompany.company}</p>
+                  <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                    Score {activeCompany.score} / 100
+                  </p>
                 </div>
                 <div className="mt-4 grid flex-1 gap-4 md:grid-cols-3 md:items-stretch">
                   {[
@@ -342,11 +342,11 @@ export default function LandingPage() {
                   ].map((section) => (
                     <div
                       key={section.title}
-                      className="flex h-full flex-col rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm"
+                      className="flex h-full flex-col rounded-xl border border-border bg-muted p-4 shadow-sm"
                     >
                       <p className={`text-xs font-semibold uppercase ${section.accent}`}>{section.title}</p>
                       {section.items.length > 0 ? (
-                        <ul className="mt-3 flex flex-1 flex-col justify-between gap-2 text-xs text-gray-700 leading-5">
+                        <ul className="mt-3 flex flex-1 flex-col justify-between gap-2 text-xs text-muted-foreground leading-5">
                           {section.items.map((item, idx) => (
                             <li key={idx} className="line-clamp-3">
                               {item}
@@ -354,7 +354,7 @@ export default function LandingPage() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="mt-3 flex-1 text-xs text-gray-400">分析を取得しています...</p>
+                        <p className="mt-3 flex-1 text-xs text-muted-foreground">分析を取得しています...</p>
                       )}
                     </div>
                   ))}
@@ -368,16 +368,16 @@ export default function LandingPage() {
           <div className="grid gap-10 md:grid-cols-3">
             <div className="md:col-span-1">
               <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">こんな課題はありませんか？</p>
-              <h2 className="mt-4 text-3xl font-semibold text-gray-900">投資情報の整理に追われる時間を削減</h2>
-              <p className="mt-4 text-lg leading-8 text-gray-600">
+              <h2 className="mt-4 text-3xl font-semibold text-foreground">投資情報の整理に追われる時間を削減</h2>
+              <p className="mt-4 text-lg leading-8 text-muted-foreground">
                 AIDE は投資判断の現場で繰り返される手作業を代替します。よくあるボトルネックを解消することで、議論に集中できる環境を整えます。
               </p>
             </div>
             <div className="md:col-span-2 grid gap-6">
               {painPoints.map((item) => (
-                <div key={item.title} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-600">{item.description}</p>
+                <div key={item.title} className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
                 </div>
               ))}
             </div>
@@ -386,70 +386,73 @@ export default function LandingPage() {
 
         <section className="max-w-6xl mx-auto px-6 pb-20">
           <div className="mb-12">
-            <h2 className="text-3xl font-semibold text-gray-900">AIDE が選ばれる理由</h2>
-            <p className="mt-4 max-w-3xl text-lg leading-8 text-gray-600">
+            <h2 className="text-3xl font-semibold text-foreground">AIDE が選ばれる理由</h2>
+            <p className="mt-4 max-w-3xl text-lg leading-8 text-muted-foreground">
               情報収集から比較、チームでの共有まで。投資判断に必要なステップを一つのワークスペースで完結させます。
             </p>
           </div>
           <div className="grid gap-8 md:grid-cols-3">
             {features.map((feature) => (
-              <div key={feature.title} className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+              <div key={feature.title} className="rounded-3xl border border-border bg-card p-8 shadow-sm">
                 <feature.icon className="h-10 w-10 rounded-full border border-blue-100 bg-blue-50 p-2 text-blue-600" />
-                <h3 className="mt-6 text-xl font-semibold text-gray-900">{feature.title}</h3>
-                <p className="mt-4 text-sm leading-6 text-gray-600">{feature.description}</p>
+                <h3 className="mt-6 text-xl font-semibold text-foreground">{feature.title}</h3>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">{feature.description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="border-y border-gray-200 bg-white">
+        <section className="border-y border-border bg-card">
           <div className="max-w-6xl mx-auto px-6 py-20">
             <div className="mb-12 text-center">
               <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">Workflow</p>
-              <h2 className="mt-4 text-3xl font-semibold text-gray-900">使い方はたったの 3 ステップ</h2>
+              <h2 className="mt-4 text-3xl font-semibold text-foreground">使い方はたったの 3 ステップ</h2>
             </div>
             <div className="grid gap-8 md:grid-cols-3">
               {workflowSteps.map((step) => (
-                <div key={step.step} className="rounded-3xl border border-gray-200 bg-gray-50 p-8 shadow-sm">
+                <div key={step.step} className="rounded-3xl border border-border bg-muted p-8 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">{step.step}</p>
                   <step.icon className="mt-4 h-10 w-10 text-blue-600" />
-                  <h3 className="mt-4 text-xl font-semibold text-gray-900">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-600">{step.description}</p>
+                  <h3 className="mt-4 text-xl font-semibold text-foreground">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="border-y border-gray-200 bg-gray-50">
-          <div className="max-w-6xl mx-auto px-6 py-20">
+        <section className="border-y border-white/20 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(240,244,255,0.7))] backdrop-blur-xl dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.95),_rgba(2,6,23,1))]">
+          <div className="mx-auto max-w-6xl px-6 py-20">
             <div className="mb-12">
-              <h2 className="text-3xl font-semibold text-gray-900">人気の比較事例</h2>
-              <p className="mt-4 max-w-3xl text-lg leading-8 text-gray-600">
+              <h2 className="text-3xl font-semibold text-foreground">人気の比較事例</h2>
+              <p className="mt-4 max-w-3xl text-lg leading-8 text-muted-foreground">
                 業界やテーマごとの代表的な比較セットを用意。ボタン一つでダッシュボードに読み込み、すぐに分析結果をチェックできます。
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-3">
               {exampleComparisons.map((example) => (
-                <div key={example.title} className="flex flex-col justify-between rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div
+                  key={example.title}
+                  className="flex flex-col justify-between rounded-3xl border border-white/30 bg-white/70 p-6 text-foreground shadow-[0_20px_60px_rgba(2,6,23,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/5 dark:text-white"
+                >
                   <div className="space-y-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">Ticker Set</p>
-                      <p className="mt-1 text-sm text-gray-500">{example.tickers.join(" / ")}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/80 dark:text-primary/60">Ticker Set</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{example.tickers.join(" / ")}</p>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900">{example.title}</h3>
-                    <p className="text-sm leading-6 text-gray-700">{example.description}</p>
-                    <div className="rounded-2xl bg-gray-50 p-4">
-                      <p className="text-xs font-semibold uppercase text-gray-500">注目ポイント</p>
-                      <p className="mt-2 text-sm text-gray-700">{example.highlight}</p>
+                    <h3 className="text-xl font-semibold text-foreground">{example.title}</h3>
+                    <p className="text-sm leading-6 text-foreground">{example.description}</p>
+                    <div className="rounded-2xl border border-white/30 bg-white/60 p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] dark:border-white/15 dark:bg-white/5">
+                      <p className="text-xs font-semibold uppercase text-muted-foreground">注目ポイント</p>
+                      <p className="mt-2 text-sm text-foreground">{example.highlight}</p>
                     </div>
                   </div>
-                  <div className="mt-6 flex items-center justify-between text-sm text-gray-500">
+                  <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
                     <div>
-                      <p className="font-medium text-gray-600">スコア帯</p>
-                      <p className="text-gray-500">{example.scoreRange}</p>
+                      <p className="font-medium text-muted-foreground">スコア帯</p>
+                      <p className="text-muted-foreground">{example.scoreRange}</p>
                     </div>
-                    <Button asChild className="rounded-full px-5 font-semibold">
+                    <Button asChild variant="outline" className={glassButtonClass}>
                       <Link
                         href={{
                           pathname: "/dashboard",
@@ -466,27 +469,27 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-y border-gray-200 bg-white">
+        <section className="border-y border-border bg-card">
           <div className="max-w-6xl mx-auto px-6 py-20">
             <div className="mb-10 text-center">
               <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">FAQ</p>
-              <h2 className="mt-4 text-3xl font-semibold text-gray-900">よくある質問</h2>
+              <h2 className="mt-4 text-3xl font-semibold text-foreground">よくある質問</h2>
             </div>
             <div className="mx-auto max-w-3xl space-y-6">
               {faqs.map((faq) => (
-                <div key={faq.question} className="rounded-3xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
-                  <h3 className="text-base font-semibold text-gray-900">{faq.question}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-600">{faq.answer}</p>
+                <div key={faq.question} className="rounded-3xl border border-border bg-muted p-6 shadow-sm">
+                  <h3 className="text-base font-semibold text-foreground">{faq.question}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{faq.answer}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="bg-gray-50 border-y border-gray-200">
-          <div className="max-w-6xl mx-auto px-6 py-16 text-center">
-            <h2 className="text-3xl font-semibold text-gray-900">投資判断をスピードアップしましょう</h2>
-            <p className="mt-4 text-lg text-gray-600">
+        <section className="border-y border-white/20 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(226,232,240,0.6))] backdrop-blur-xl dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.9),_rgba(2,6,23,1))]">
+          <div className="mx-auto max-w-6xl px-6 py-16 text-center">
+            <h2 className="text-3xl font-semibold text-foreground">投資判断をスピードアップしましょう</h2>
+            <p className="mt-4 text-lg text-muted-foreground">
               サインアップしてダッシュボードにアクセス。気になる企業の比較を数分で始められます。
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -495,7 +498,7 @@ export default function LandingPage() {
                   <Button size="lg" className="rounded-full px-6 font-semibold" asChild>
                     <Link href="/dashboard">ダッシュボードを開く</Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="rounded-full px-6 font-semibold" asChild>
+                  <Button size="lg" variant="outline" className={glassButtonClass} asChild>
                     <Link
                       href={{
                         pathname: "/dashboard",
@@ -511,7 +514,7 @@ export default function LandingPage() {
                   <Button size="lg" className="rounded-full px-6 font-semibold" asChild>
                     <Link href="/sign-up">今すぐ登録する</Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="rounded-full px-6 font-semibold" asChild>
+                  <Button size="lg" variant="outline" className={glassButtonClass} asChild>
                     <Link href="/sign-in">既にアカウントをお持ちの方</Link>
                   </Button>
                 </>

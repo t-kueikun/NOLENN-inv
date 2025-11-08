@@ -7,7 +7,6 @@ export interface EdinetCompanyInfo {
   representativeTitle: string | null
   headOfficeAddress: string | null
   capitalStock: string | null
-  establishedDate: string | null
 }
 
 const EDINET_BASE = "https://api.edinet-fsa.go.jp/api/v2"
@@ -42,8 +41,6 @@ const ADDRESS_KEYWORDS = [
   "LocationOfMainOffice",
 ]
 const CAPITAL_KEYWORDS = ["CapitalStock", "CapitalAmount", "Capital"]
-const ESTABLISHED_KEYWORDS = ["DateOfIncorporation", "DateOfEstablishment", "EstablishedDate"]
-
 interface EdinetDocumentMeta {
   docID: string
   docTypeCode: string
@@ -335,11 +332,7 @@ function extractCompanyInfoFromXbrl(xbrl: unknown): EdinetCompanyInfo | null {
   const capital =
     findFirstValue(xbrl, CAPITAL_KEYWORDS.map((kw) => `jpdei_cor:${kw}`)) ??
     findFirstValueByKeyword(xbrl, CAPITAL_KEYWORDS)
-  const established =
-    findFirstValue(xbrl, ESTABLISHED_KEYWORDS.map((kw) => `jpdei_cor:${kw}`)) ??
-    findFirstValueByKeyword(xbrl, ESTABLISHED_KEYWORDS)
-
-  if (!representativeName && !representativeTitle && !address && !capital && !established) {
+  if (!representativeName && !representativeTitle && !address && !capital) {
     return null
   }
 
@@ -348,7 +341,6 @@ function extractCompanyInfoFromXbrl(xbrl: unknown): EdinetCompanyInfo | null {
     representativeTitle: representativeTitle ? normalizeEdinetText(representativeTitle) : null,
     headOfficeAddress: address ? normalizeEdinetText(address) : null,
     capitalStock: capital ? normalizeEdinetText(capital) : null,
-    establishedDate: established ? normalizeEdinetText(established) : null,
   }
 }
 

@@ -5,7 +5,6 @@ const MOCK_DATA: Record<string, any> = {
   "9831.T": {
     company: "ヤマダホールディングス",
     ticker: "9831.T",
-    founded: "1983年9月",
     representative: "山田 昇",
     location: "群馬県高崎市",
     capital: "711億円",
@@ -18,7 +17,6 @@ const MOCK_DATA: Record<string, any> = {
   "7419.T": {
     company: "ノジマ",
     ticker: "7419.T",
-    founded: "1962年4月",
     representative: "野島 廣司",
     location: "神奈川県横浜市",
     capital: "63億3,050万円",
@@ -31,7 +29,6 @@ const MOCK_DATA: Record<string, any> = {
   "3048.T": {
     company: "ビックカメラ",
     ticker: "3048.T",
-    founded: "1983年9月1日",
     representative: "秋保 徹",
     location: "東京都豊島区",
     capital: "259億2,900万円",
@@ -585,7 +582,7 @@ export async function GET(request: NextRequest) {
   - outlook：3件（各30文字以内）
 - スコアは 0〜100 の整数値
 - commentary は総合スコアの簡潔な説明（50文字以内）
-- 企業情報（設立年、代表者、所在地、資本金）も含める
+- 企業情報（代表者、所在地、資本金）も含める
 - company には正式な企業名を入れる
 - ticker には最も一般的な証券コード（判別できない場合は空文字）を入れる
 - 日本語で出力する
@@ -594,7 +591,6 @@ export async function GET(request: NextRequest) {
 {
   "company": "企業名",
   "ticker": "XXXX",
-  "founded": "1983年9月",
   "representative": "代表者名",
   "location": "所在地（都道府県・市区町村）",
   "capital": "資本金",
@@ -668,7 +664,6 @@ export async function GET(request: NextRequest) {
 
     if (
       !analysis.company ||
-      !analysis.founded ||
       !analysis.representative ||
       !analysis.location ||
       !analysis.capital ||
@@ -774,13 +769,6 @@ export async function GET(request: NextRequest) {
       const formattedCapital = formatCapitalAmount(edinetInfo.capitalStock)
       if (formattedCapital) {
         analysis.capital = formattedCapital
-      }
-    }
-
-    if (edinetInfo?.establishedDate) {
-      const established = edinetInfo.establishedDate.replace(/\s+/g, " ").trim()
-      if (established.length > 0) {
-        analysis.founded = established
       }
     }
 
