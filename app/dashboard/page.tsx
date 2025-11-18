@@ -23,6 +23,7 @@ interface CompanyInsight {
   outlook: string[]
   score: number
   commentary: string
+  analysisSummary?: string
   logo?: string
   marketPrice?: number
   marketChangePercent?: number
@@ -601,6 +602,14 @@ export default function DashboardPage() {
                           )}
                           {company.summary && (
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">{company.summary}</p>
+                          )}
+                          {company.analysisSummary && (
+                            <div className="mt-4 rounded-3xl border border-white/50 bg-white/70 p-4 text-left text-sm leading-6 text-foreground shadow-[0_10px_30px_rgba(2,6,23,0.12)] dark:border-white/15 dark:bg-white/10 dark:text-white/90">
+                              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground dark:text-white/70">
+                                AI ANALYSIS
+                              </p>
+                              <p className="mt-2 whitespace-pre-line">{company.analysisSummary}</p>
+                            </div>
                           )}
                         </div>
 

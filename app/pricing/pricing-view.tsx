@@ -156,6 +156,7 @@ function HeroButtons({
 export function PricingView() {
   const { plan, planLoading, isAuthenticated } = useAuth()
   const isPro = plan === "pro"
+  const shouldShowPlans = !planLoading && !isPro
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -189,68 +190,70 @@ export function PricingView() {
           ))}
         </section>
 
-        <section className="grid gap-8 md:grid-cols-2">
-          {plans.map((planCard) => {
-            const cta = resolvePlanCta(planCard.name, plan ?? null, planLoading, isAuthenticated)
-            return (
-              <div key={planCard.name} className="group relative">
-                <div
-                  className={cn(
-                    glassCardClass,
-                    "relative overflow-hidden transition-transform duration-300 ease-out hover:-translate-y-2",
-                    "hover:shadow-[0_45px_140px_rgba(15,23,42,0.35)]",
-                    planCard.featured &&
-                      "border-primary/60 bg-gradient-to-br from-primary/10 via-white/70 to-white/90 dark:from-primary/20 dark:via-white/10 dark:to-white/5",
-                  )}
-                >
-                  <span className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
-                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85),_transparent_60%)] mix-blend-screen dark:bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.35),_transparent_65%)]" />
-                    <span className="absolute -inset-x-10 -top-32 h-40 rotate-6 bg-gradient-to-r from-white/60 via-white/10 to-transparent opacity-70 blur-3xl dark:from-white/20 dark:via-white/5" />
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-muted-foreground">{planCard.label}</p>
-                      <h2 className="mt-1 text-3xl font-semibold">{planCard.name}</h2>
-                    </div>
-                    <Badge variant={planCard.badgeVariant}>{planCard.featured ? "最も人気" : "エントリー"}</Badge>
-                  </div>
-                  <p className="mt-4 text-sm text-muted-foreground">{planCard.highlight}</p>
-                  <p className="mt-6 text-4xl font-semibold">
-                    {planCard.price}
-                    <span className="ml-1 text-base font-medium text-muted-foreground">{planCard.cadence}</span>
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{planCard.description}</p>
-                  <Separator className="my-6 border-white/30 dark:border-white/10" />
-                  <ul className="space-y-3">
-                    {planCard.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3 text-sm leading-6 text-foreground">
-                        <span className="mt-0.5 rounded-full bg-primary/15 p-1 text-primary dark:bg-primary/30">
-                          <Check className="h-3.5 w-3.5" />
-                        </span>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-8">
-                    {cta.disabled ? (
-                      <Button variant={cta.variant} className="w-full rounded-full py-6 text-base font-semibold" disabled>
-                        {cta.label}
-                      </Button>
-                    ) : (
-                      <Button
-                        asChild
-                        variant={cta.variant}
-                        className="w-full rounded-full py-6 text-base font-semibold"
-                      >
-                        <Link href={cta.href}>{cta.label}</Link>
-                      </Button>
+        {shouldShowPlans && (
+          <section className="grid gap-8 md:grid-cols-2">
+            {plans.map((planCard) => {
+              const cta = resolvePlanCta(planCard.name, plan ?? null, planLoading, isAuthenticated)
+              return (
+                <div key={planCard.name} className="group relative">
+                  <div
+                    className={cn(
+                      glassCardClass,
+                      "relative overflow-hidden transition-transform duration-300 ease-out hover:-translate-y-2",
+                      "hover:shadow-[0_45px_140px_rgba(15,23,42,0.35)]",
+                      planCard.featured &&
+                        "border-primary/60 bg-gradient-to-br from-primary/10 via-white/70 to-white/90 dark:from-primary/20 dark:via-white/10 dark:to-white/5",
                     )}
+                  >
+                    <span className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
+                      <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85),_transparent_60%)] mix-blend-screen dark:bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.35),_transparent_65%)]" />
+                      <span className="absolute -inset-x-10 -top-32 h-40 rotate-6 bg-gradient-to-r from-white/60 via-white/10 to-transparent opacity-70 blur-3xl dark:from-white/20 dark:via-white/5" />
+                    </span>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-muted-foreground">{planCard.label}</p>
+                        <h2 className="mt-1 text-3xl font-semibold">{planCard.name}</h2>
+                      </div>
+                      <Badge variant={planCard.badgeVariant}>{planCard.featured ? "最も人気" : "エントリー"}</Badge>
+                    </div>
+                    <p className="mt-4 text-sm text-muted-foreground">{planCard.highlight}</p>
+                    <p className="mt-6 text-4xl font-semibold">
+                      {planCard.price}
+                      <span className="ml-1 text-base font-medium text-muted-foreground">{planCard.cadence}</span>
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{planCard.description}</p>
+                    <Separator className="my-6 border-white/30 dark:border-white/10" />
+                    <ul className="space-y-3">
+                      {planCard.features.map((feature) => (
+                        <li key={feature} className="flex items-start gap-3 text-sm leading-6 text-foreground">
+                          <span className="mt-0.5 rounded-full bg-primary/15 p-1 text-primary dark:bg-primary/30">
+                            <Check className="h-3.5 w-3.5" />
+                          </span>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-8">
+                      {cta.disabled ? (
+                        <Button variant={cta.variant} className="w-full rounded-full py-6 text-base font-semibold" disabled>
+                          {cta.label}
+                        </Button>
+                      ) : (
+                        <Button
+                          asChild
+                          variant={cta.variant}
+                          className="w-full rounded-full py-6 text-base font-semibold"
+                        >
+                          <Link href={cta.href}>{cta.label}</Link>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </section>
+              )
+            })}
+          </section>
+        )}
 
         <section className={cn(glassCardClass, "flex flex-col items-center gap-6 text-center")}>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-4 py-1 text-sm font-semibold text-primary dark:border-white/15 dark:bg-white/5">

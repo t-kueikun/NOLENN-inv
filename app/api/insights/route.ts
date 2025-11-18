@@ -13,6 +13,8 @@ const MOCK_DATA: Record<string, any> = {
     outlook: ["住宅・家電一体モデルの拡大余地", "DX化で在庫・人員源泉が進展", "低価格競争から脱却し収益構造へ"],
     score: 72,
     commentary: "→「成熟×再成長」フェーズ。リフォーム事業が収益を押し上げ。",
+    analysisSummary:
+      "住宅×家電の統合提案で単価を底上げしつつ、動画視聴による集客策で来店頻度を維持。粗利を圧迫する家電単体販売はPBや付帯サービスで補い、DX投資で在庫回転と人件費を同時に改善するシナリオ。",
   },
   "7419.T": {
     company: "ノジマ",
@@ -25,6 +27,8 @@ const MOCK_DATA: Record<string, any> = {
     outlook: ["通信×家電モデルの深化に期待", "EC併用で営業効率が向上傾向", "成長率は安定も収益性改善がカギ"],
     score: 63,
     commentary: "→顧客接点の強さが武器。利益率改善に向けた再構築期。",
+    analysisSummary:
+      "キャリアショップと家電販売の両面から顧客データを集約し、高単価の通信サービスを抱き合わせるモデルが浸透。足元は人件費と店舗改装費で利益が圧迫されるが、提案営業力とサブスク収益が固定費を吸収するかが焦点。",
   },
   "3048.T": {
     company: "ビックカメラ",
@@ -45,6 +49,8 @@ const MOCK_DATA: Record<string, any> = {
     ],
     score: 68,
     commentary: "→「都市型ECハイブリッド」の成功モデル。効率改善で上昇余地大。",
+    analysisSummary:
+      "都心大型店とECの在庫を一体で管理し、当日受取や専門スタッフの相談導線で差別化。医薬・酒類など日用品のトラフィックを活用しながら粗利の安い家電を補填し、DX投資の成果が販管費率の改善に繋がりつつある。",
   },
 }
 
@@ -90,6 +96,10 @@ const ALIAS_MAP: Record<
   "skymark": { ticker: "9204.T", company: "スカイマーク" },
   "9204": { ticker: "9204.T", company: "スカイマーク" },
   "9204.t": { ticker: "9204.T", company: "スカイマーク" },
+  "キーエンス": { ticker: "6861.T", company: "キーエンス" },
+  "keyence": { ticker: "6861.T", company: "キーエンス" },
+  "6861": { ticker: "6861.T", company: "キーエンス" },
+  "6861.t": { ticker: "6861.T", company: "キーエンス" },
 }
 
 function normalizeTickerSymbol(raw: string): string {
@@ -408,7 +418,93 @@ interface ExternalCompanyProfile {
   officers: OfficerInfo[]
 }
 
-async function fetchCompanyProfile(_ticker: string): Promise<ExternalCompanyProfile | null> {
+const YAHOO_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (compatible; AIDE/1.0; +https://aide-investment-app.local)",
+  Accept: "application/json",
+} as const
+
+const YAHOO_QUOTE_SUMMARY_ENDPOINTS = [
+  "https://query2.finance.yahoo.com/v10/finance/quoteSummary",
+  "https://query1.finance.yahoo.com/v10/finance/quoteSummary",
+] as const
+
+const YAHOO_QUOTE_ENDPOINT = "https://query1.finance.yahoo.com/v7/finance/quote"
+
+function buildYahooHeadquarters(profile: Record<string, any> | undefined) {
+  if (!profile) return null
+  const parts = [profile.state, profile.city, profile.country]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.trim())
+  if (parts.length === 0) return null
+  return parts.join(", ")
+}
+
+async function fetchCompanyProfile(ticker: string): Promise<ExternalCompanyProfile | null> {
+  const normalizedTicker = normalizeTickerSymbol(ticker)
+
+  for (const endpoint of YAHOO_QUOTE_SUMMARY_ENDPOINTS) {
+    const url = `${endpoint}/${encodeURIComponent(normalizedTicker)}?modules=price,summaryProfile`
+    try {
+      const response = await fetch(url, {
+        headers: YAHOO_HEADERS,
+        next: { revalidate: 60 * 10 },
+      })
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          continue
+        }
+        const errorText = await response.text()
+        console.warn("Yahoo Finance summary error:", response.status, errorText)
+        continue
+      }
+      const payload = await response.json()
+      const result = payload?.quoteSummary?.result?.[0]
+      if (!result) continue
+      const price = result.price as Record<string, any> | undefined
+      const profile = result.summaryProfile as Record<string, any> | undefined
+
+      return {
+        symbol: typeof price?.symbol === "string" ? price.symbol : normalizedTicker,
+        longName: typeof price?.longName === "string" ? price.longName : null,
+        shortName: typeof price?.shortName === "string" ? price.shortName : null,
+        industry: typeof profile?.industry === "string" ? profile.industry : null,
+        sector: typeof profile?.sector === "string" ? profile.sector : null,
+        headquarters: buildYahooHeadquarters(profile),
+        website: typeof profile?.website === "string" ? profile.website : null,
+        officers: [],
+      }
+    } catch (error) {
+      console.warn("Yahoo Finance profile fetch failed:", error)
+    }
+  }
+
+  try {
+    const response = await fetch(`${YAHOO_QUOTE_ENDPOINT}?symbols=${encodeURIComponent(normalizedTicker)}`, {
+      headers: YAHOO_HEADERS,
+      next: { revalidate: 60 * 5 },
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.warn("Yahoo Finance quote fallback error:", response.status, errorText)
+      return null
+    }
+    const payload = await response.json()
+    const result = payload?.quoteResponse?.result?.[0]
+    if (!result) return null
+    return {
+      symbol: typeof result?.symbol === "string" ? result.symbol : normalizedTicker,
+      longName: typeof result?.longName === "string" ? result.longName : null,
+      shortName: typeof result?.shortName === "string" ? result.shortName : null,
+      industry: typeof result?.industry === "string" ? result.industry : null,
+      sector: typeof result?.sector === "string" ? result.sector : null,
+      headquarters: null,
+      website: null,
+      officers: [],
+    }
+  } catch (error) {
+    console.warn("Yahoo Finance quote fallback fetch failed:", error)
+  }
+
   return null
 }
 
@@ -477,7 +573,9 @@ export async function GET(request: NextRequest) {
       }
     }
     if (logo) data.logo = logo
-    if (profile?.longName) data.company = profile.longName
+    if (profile?.longName || profile?.shortName) {
+      data.company = profile.longName ?? profile.shortName ?? data.company
+    }
     if (profile?.symbol) {
       data.ticker = profile.symbol
     } else if (!data.ticker) {
@@ -540,7 +638,12 @@ export async function GET(request: NextRequest) {
       tickerLikeCandidate ??
       normalized
     ).toString().trim()
-    const enforcedCompanyNameRaw = (externalProfile?.longName ?? hintCompany ?? normalized).trim()
+    const enforcedCompanyNameRaw = (
+      externalProfile?.longName ??
+      externalProfile?.shortName ??
+      hintCompany ??
+      normalized
+    ).trim()
     const enforcedTicker = normalizeTickerSymbol(
       enforcedTickerRaw.length > 0 ? enforcedTickerRaw : hintTicker ?? tickerLikeCandidate ?? normalized,
     )
@@ -577,11 +680,12 @@ export async function GET(request: NextRequest) {
 - company は可能な限り "${enforcedCompanyName}" の正式名称を用いる
 - 会社名や証券コードが曖昧な場合は一般的に認知されている日本企業を前提に推定し、結果に明記する
 - 各配列の最大要素数は：
-  - strengths：3件（各30文字以内）
-  - risks：3件（各30文字以内）
-  - outlook：3件（各30文字以内）
+  - strengths：3件（各60〜80文字で、定量的な指標や根拠を含める）
+  - risks：3件（各60〜80文字で、リスクが顕在化する条件や確率も触れる）
+  - outlook：3件（各60〜80文字で、時間軸や打ち手を明記する）
 - スコアは 0〜100 の整数値
-- commentary は総合スコアの簡潔な説明（50文字以内）
+- commentary は総合スコアの簡潔な説明（60文字以内、矢印「→」から始める）
+- analysisSummary は 2〜3 文（120〜180文字）で強み・課題・見通しの関係性や注目イベントを要約する
 - 企業情報（代表者、所在地、資本金）も含める
 - company には正式な企業名を入れる
 - ticker には最も一般的な証券コード（判別できない場合は空文字）を入れる
@@ -599,7 +703,8 @@ export async function GET(request: NextRequest) {
   "risks": ["課題1", "課題2", "課題3"],
   "outlook": ["見通し1", "見通し2", "見通し3"],
   "score": 70,
-  "commentary": "→スコアの簡潔な説明文。"
+  "commentary": "→スコアの簡潔な説明文。",
+  "analysisSummary": "強みや課題、足元のイベントを繋いで状況を説明する文章。"
 }`
     const primaryModelId = "gpt-5-nano"
     const fallbackModelId = "gpt-4o-mini"
@@ -671,6 +776,7 @@ export async function GET(request: NextRequest) {
       !analysis.risks ||
       !analysis.outlook ||
       !analysis.commentary ||
+      !analysis.analysisSummary ||
       typeof analysis.score !== "number"
     ) {
       throw new Error("AI応答の形式が不正です")
@@ -743,6 +849,9 @@ export async function GET(request: NextRequest) {
       finalRepresentative = `情報未確認（${currentYear}年時点）`
     }
     analysis.representative = finalRepresentative
+    if (typeof analysis.analysisSummary === "string") {
+      analysis.analysisSummary = analysis.analysisSummary.trim()
+    }
 
     const normalizedFinalRepresentative = normalizeRepresentativeForComparison(analysis.representative)
     const usedEdinet =
