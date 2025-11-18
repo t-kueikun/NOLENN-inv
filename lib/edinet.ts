@@ -7,6 +7,7 @@ export interface EdinetCompanyInfo {
   representativeTitle: string | null
   headOfficeAddress: string | null
   capitalStock: string | null
+  companyName: string | null
 }
 
 const EDINET_BASE = "https://api.edinet-fsa.go.jp/api/v2"
@@ -47,6 +48,10 @@ interface EdinetDocumentMeta {
   submissionDateTime: string
   secCode?: string | null
   edinetCode?: string | null
+  filerName?: string | null
+  filerNameInEnglish?: string | null
+  issuerName?: string | null
+  issuerNameInEnglish?: string | null
 }
 
 interface FetchEdinetOptions {
@@ -104,6 +109,10 @@ async function fetchDocumentsForDate(date: string, forceRefresh = false): Promis
           submissionDateTime: String(item.submitDateTime ?? item.submissionDateTime ?? ""),
           secCode: item.secCode ? String(item.secCode) : undefined,
           edinetCode: item.edinetCode ? String(item.edinetCode) : undefined,
+          filerName: item.filerName ? String(item.filerName) : undefined,
+          filerNameInEnglish: item.filerNameInEnglish ? String(item.filerNameInEnglish) : undefined,
+          issuerName: item.issuerName ? String(item.issuerName) : undefined,
+          issuerNameInEnglish: item.issuerNameInEnglish ? String(item.issuerNameInEnglish) : undefined,
         }))
         .filter((item) => item.docID)
     : []
@@ -341,6 +350,7 @@ function extractCompanyInfoFromXbrl(xbrl: unknown): EdinetCompanyInfo | null {
     representativeTitle: representativeTitle ? normalizeEdinetText(representativeTitle) : null,
     headOfficeAddress: address ? normalizeEdinetText(address) : null,
     capitalStock: capital ? normalizeEdinetText(capital) : null,
+    companyName: null,
   }
 }
 
@@ -416,6 +426,13 @@ export async function fetchEdinetCompanyInfoByTicker(
   try {
     const parsed = xmlParser.parse(xbrlEntry.getData().toString("utf-8"))
     const info = extractCompanyInfoFromXbrl(parsed)
+    const companyNameCandidate =
+      docMeta?.filerName ??
+      docMeta?.issuerName ??
+      docMeta?.filerNameInEnglish ??
+      docMeta?.issuerNameInEnglish ??
+      null
+    const normalizedCompanyName = companyNameCandidate ? normalizeEdinetText(companyNameCandidate) : info?.companyName ?? null
     if (info) {
       console.info(
         `[EDINET] Extracted info for ${normalizedTicker}: representative=${info.representativeName ?? "N/A"}, address=${
@@ -425,7 +442,16 @@ export async function fetchEdinetCompanyInfoByTicker(
     } else {
       console.warn(`[EDINET] No structured info found inside document ${docMeta.docID} for ${normalizedTicker}`)
     }
-    const result = info ?? null
+    const result =
+      info || normalizedCompanyName
+        ? {
+            representativeName: info?.representativeName ?? null,
+            representativeTitle: info?.representativeTitle ?? null,
+            headOfficeAddress: info?.headOfficeAddress ?? null,
+            capitalStock: info?.capitalStock ?? null,
+            companyName: normalizedCompanyName,
+          }
+        : null
     companyInfoCache.set(normalizedTicker, { timestamp: Date.now(), data: result })
     return result
   } catch (error) {

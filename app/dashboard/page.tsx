@@ -133,6 +133,17 @@ export default function DashboardPage() {
     })
   }, [])
 
+  const resetHistory = useCallback(() => {
+    setHistory([])
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(HISTORY_STORAGE_KEY)
+      } catch (error) {
+        console.error("Failed to reset ticker history:", error)
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -459,13 +470,25 @@ export default function DashboardPage() {
         </div>
         {history.length > 0 && (
           <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
-            <p className="text-sm font-semibold">最近の入力</p>
-            <p className="mt-1 text-xs text-muted-foreground">過去に分析したティッカーから再分析できます。</p>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs">
-                {history.map((entry) => (
-                  <Button
-                    key={`${entry.ticker}-${entry.company ?? "unknown"}`}
-                    variant="outline"
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold">最近の入力</p>
+                <p className="mt-1 text-xs text-muted-foreground">過去に分析したティッカーから再分析できます。</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto rounded-full text-xs text-muted-foreground hover:text-foreground"
+                onClick={resetHistory}
+              >
+                履歴をリセット
+              </Button>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs">
+              {history.map((entry) => (
+                <Button
+                  key={`${entry.ticker}-${entry.company ?? "unknown"}`}
+                  variant="outline"
                     size="sm"
                     className="rounded-full border-input px-3 py-1 text-foreground/80"
                     onClick={() => handleSuggestedSelect(entry.ticker)}

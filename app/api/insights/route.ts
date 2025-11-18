@@ -429,6 +429,7 @@ const YAHOO_QUOTE_SUMMARY_ENDPOINTS = [
 ] as const
 
 const YAHOO_QUOTE_ENDPOINT = "https://query1.finance.yahoo.com/v7/finance/quote"
+const YAHOO_SEARCH_ENDPOINT = "https://query2.finance.yahoo.com/v1/finance/search"
 
 function buildYahooHeadquarters(profile: Record<string, any> | undefined) {
   if (!profile) return null
@@ -505,7 +506,56 @@ async function fetchCompanyProfile(ticker: string): Promise<ExternalCompanyProfi
     console.warn("Yahoo Finance quote fallback fetch failed:", error)
   }
 
+  const searchProfile = await fetchYahooSearchProfile(normalizedTicker, normalizedTicker)
+  if (searchProfile) return searchProfile
+
   return null
+}
+
+async function fetchYahooSearchProfile(query: string, expectedTicker?: string): Promise<ExternalCompanyProfile | null> {
+  const trimmedQuery = query.trim()
+  if (!trimmedQuery) return null
+  const normalizedExpected = expectedTicker ? normalizeTickerSymbol(expectedTicker) : undefined
+  const searchQuery =
+    normalizedExpected && trimmedQuery.toUpperCase() === normalizedExpected
+      ? normalizedExpected.replace(/\.T$/i, "")
+      : trimmedQuery
+  const url = `${YAHOO_SEARCH_ENDPOINT}?q=${encodeURIComponent(searchQuery)}&quotesCount=5&newsCount=0`
+  try {
+    const response = await fetch(url, {
+      headers: YAHOO_HEADERS,
+      next: { revalidate: 60 * 5 },
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.warn("Yahoo Finance search error:", response.status, errorText)
+      return null
+    }
+    const payload = await response.json()
+    const quotes = Array.isArray(payload?.quotes) ? payload.quotes : []
+    if (quotes.length === 0) return null
+    const match =
+      (normalizedExpected
+        ? quotes.find(
+            (quote: any) => typeof quote?.symbol === "string" && normalizeTickerSymbol(quote.symbol) === normalizedExpected,
+          )
+        : undefined) ?? quotes[0]
+    if (!match || typeof match !== "object" || typeof match.symbol !== "string") return null
+    const resolvedSymbol = normalizeTickerSymbol(match.symbol)
+    return {
+      symbol: resolvedSymbol,
+      longName: typeof match.longname === "string" ? match.longname : null,
+      shortName: typeof match.shortname === "string" ? match.shortname : null,
+      industry: typeof match.industry === "string" ? match.industry : null,
+      sector: typeof match.sector === "string" ? match.sector : null,
+      headquarters: null,
+      website: null,
+      officers: [],
+    }
+  } catch (error) {
+    console.warn("Yahoo Finance search fetch failed:", error)
+    return null
+  }
 }
 
 function findMockData(identifier: string) {
@@ -540,8 +590,19 @@ export async function GET(request: NextRequest) {
   const alias =
     ALIAS_MAP[normalized.toLowerCase()] ??
     (tickerLikeCandidate ? ALIAS_MAP[tickerLikeCandidate.toLowerCase()] : undefined)
-  const hintTicker = alias?.ticker ?? tickerLikeCandidate
-  const hintCompany = alias?.company
+  let hintTicker = alias?.ticker ?? tickerLikeCandidate
+  let hintCompany = alias?.company
+
+  if (!hintTicker && normalized.length >= 2) {
+    const searchProfile = await fetchYahooSearchProfile(normalized)
+    if (searchProfile?.symbol) {
+      hintTicker = searchProfile.symbol
+      if (!hintCompany) {
+        hintCompany = searchProfile.longName ?? searchProfile.shortName ?? undefined
+      }
+    }
+  }
+
   const cacheKey = (hintTicker ?? normalized).toLowerCase()
   if (skipCache) {
     insightsCache.delete(cacheKey)
@@ -865,6 +926,16 @@ export async function GET(request: NextRequest) {
 
     if (!usedOverride && !usedEdinet && !usedWikipedia && !usedFmp && usedAI) {
       analysis.representative = `情報未確認（${currentYear}年時点）`
+    }
+
+    if (edinetInfo?.companyName) {
+      const sanitizedEdinetCompany = sanitizeWikiValue(edinetInfo.companyName)
+      if (sanitizedEdinetCompany) {
+        const existingCompany = typeof analysis.company === "string" ? analysis.company.trim() : ""
+        if (!existingCompany || existingCompany.toLowerCase() === analysis.ticker.toLowerCase()) {
+          analysis.company = sanitizedEdinetCompany
+        }
+      }
     }
 
     if (edinetInfo?.headOfficeAddress) {
