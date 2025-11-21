@@ -687,8 +687,9 @@ const suggestionContextKeyRef = useRef<string | null>(null)
               </div>
             ))}
           </div>
+        </div>
         {history.length > 0 && (
-        <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
+          <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold">最近の入力</p>
@@ -755,7 +756,6 @@ const suggestionContextKeyRef = useRef<string | null>(null)
             {suggestedError && <p className="mt-2 text-xs text-red-500">{suggestedError}</p>}
           </div>
         )}
-        </div>
       </section>
 
       {validCompanies.length > 0 && (
