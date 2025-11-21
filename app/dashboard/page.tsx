@@ -1,10 +1,9 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "../providers"
@@ -53,6 +52,123 @@ interface HistoryEntry {
   company?: string
 }
 
+interface SuggestedCompany {
+  ticker: string
+  name: string
+  reason?: string
+}
+
+type MarketKey = DashboardSettings["preferredMarket"]
+
+const defaultSuggestedCompanies: Record<MarketKey, SuggestedCompany[]> = {
+  jp: [],
+  us: [],
+}
+
+const jpTickerGroupFallbacks: Record<string, SuggestedCompany[]> = {
+  "7419.T": [
+    { ticker: "9831.T", name: "ヤマダHD" },
+    { ticker: "3048.T", name: "ビックカメラ" },
+    { ticker: "2651.T", name: "ローソン" },
+  ],
+  "3048.T": [
+    { ticker: "9831.T", name: "ヤマダHD" },
+    { ticker: "7419.T", name: "ノジマ" },
+    { ticker: "2651.T", name: "ローソン" },
+  ],
+  "9831.T": [
+    { ticker: "3048.T", name: "ビックカメラ" },
+    { ticker: "7419.T", name: "ノジマ" },
+    { ticker: "2651.T", name: "ローソン" },
+  ],
+  "9101.T": [
+    { ticker: "9104.T", name: "商船三井" },
+    { ticker: "9107.T", name: "川崎汽船" },
+  ],
+  "9104.T": [
+    { ticker: "9101.T", name: "日本郵船" },
+    { ticker: "9107.T", name: "川崎汽船" },
+  ],
+  "9107.T": [
+    { ticker: "9101.T", name: "日本郵船" },
+    { ticker: "9104.T", name: "商船三井" },
+  ],
+  "9201.T": [
+    { ticker: "9202.T", name: "ANAホールディングス" },
+    { ticker: "9204.T", name: "スカイマーク" },
+    { ticker: "9206.T", name: "スターフライヤー" },
+  ],
+  "9202.T": [
+    { ticker: "9201.T", name: "日本航空" },
+    { ticker: "9204.T", name: "スカイマーク" },
+    { ticker: "9206.T", name: "スターフライヤー" },
+  ],
+  "9204.T": [
+    { ticker: "9201.T", name: "日本航空" },
+    { ticker: "9202.T", name: "ANAホールディングス" },
+  ],
+  "9206.T": [
+    { ticker: "9201.T", name: "日本航空" },
+    { ticker: "9202.T", name: "ANAホールディングス" },
+  ],
+}
+
+function normalizeSuggestion(entry: unknown): SuggestedCompany | null {
+  if (!entry || typeof entry !== "object") return null
+  const candidate = entry as Record<string, unknown>
+  const ticker = typeof candidate.ticker === "string" ? candidate.ticker.trim() : ""
+  const name = typeof candidate.name === "string" ? candidate.name.trim() : ""
+  if (!ticker || !name) return null
+  const reason =
+    typeof candidate.reason === "string" && candidate.reason.trim().length > 0
+      ? candidate.reason.trim()
+      : undefined
+  return { ticker, name, reason }
+}
+
+function sanitizeSuggestionList(value: unknown): SuggestedCompany[] {
+  if (!Array.isArray(value)) return []
+  const deduped: SuggestedCompany[] = []
+  const seen = new Set<string>()
+  for (const entry of value) {
+    const normalized = normalizeSuggestion(entry)
+    if (!normalized) continue
+    const key = normalized.ticker.toUpperCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(normalized)
+  }
+  return deduped
+}
+
+function extractJpxRange(ticker: string | null | undefined): number | null {
+  if (!ticker) return null
+  const match = ticker.match(/(\d{4})/)
+  if (!match) return null
+  const numeric = Number(match[1])
+  if (!Number.isFinite(numeric)) return null
+  return Math.floor(numeric / 100) * 100
+}
+
+function deriveRangeBaseFromTickers(values: string[]): number | null {
+  for (const value of values) {
+    const range = extractJpxRange(value)
+    if (range !== null) return range
+  }
+  return null
+}
+
+function normalizeTickerForComparison(value: string): string {
+  const trimmed = value.trim().toUpperCase()
+  if (/^\d{4}$/.test(trimmed)) {
+    return `${trimmed}.T`
+  }
+  if (/^\d{4}\.T$/.test(trimmed)) {
+    return trimmed
+  }
+  return trimmed
+}
+
 function ensureHttps(url?: string | null): string | undefined {
   if (typeof url !== "string") return undefined
   const trimmed = url.trim()
@@ -73,10 +189,16 @@ export default function DashboardPage() {
   const [settings, setSettings] = useState<DashboardSettings>(defaultDashboardSettings)
   const [hasFetchedSettings, setHasFetchedSettings] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>([])
-  const hasQueryParam = Boolean(searchParams.get("tickers"))
-  const showSettingsSummary = !hasQueryParam && settings.defaultTickers.trim().length > 0
+  const [suggestedCompanies, setSuggestedCompanies] = useState<SuggestedCompany[]>(
+    defaultSuggestedCompanies[defaultDashboardSettings.preferredMarket],
+  )
+  const [suggestedLoading, setSuggestedLoading] = useState(false)
+const [suggestedError, setSuggestedError] = useState<string | null>(null)
+const hasQueryParam = Boolean(searchParams.get("tickers"))
+const showSettingsSummary = !hasQueryParam && settings.defaultTickers.trim().length > 0
 
-  const tickersRef = useRef(tickers)
+const tickersRef = useRef(tickers)
+const suggestionContextKeyRef = useRef<string | null>(null)
   useEffect(() => {
     tickersRef.current = tickers
   }, [tickers])
@@ -338,25 +460,147 @@ export default function DashboardPage() {
   }, [analyzeCompany, hasAppliedSettings, hasFetchedSettings, user])
 
   const validCompanies = companies.filter((c): c is CompanyInsight => c !== null)
+  const hasCandidateContext = tickers.some((value) => value.trim().length > 0) || validCompanies.length > 0
 
-  const suggestedCompanies = useMemo(() => {
-    const jp = [
-      { ticker: "7203.T", name: "トヨタ自動車" },
-      { ticker: "6758.T", name: "ソニーグループ" },
-      { ticker: "8035.T", name: "東京エレクトロン" },
-      { ticker: "6861.T", name: "キーエンス" },
-      { ticker: "8306.T", name: "三菱UFJフィナンシャル・グループ" },
-      { ticker: "9983.T", name: "ファーストリテイリング" },
+  useEffect(() => {
+    let cancelled = false
+    const trimmedTickers = tickers.map((ticker) => ticker.trim()).filter((value) => value.length > 0)
+    const normalizedTickers = trimmedTickers.map((value) => normalizeTickerForComparison(value))
+    const usedTickerSet = new Set(normalizedTickers)
+    const baseList = defaultSuggestedCompanies[settings.preferredMarket] ?? []
+    const contextCompanies = companies
+      .map((company) => {
+        if (!company) return null
+        return {
+          ticker: company.ticker,
+          name: company.company,
+          sector: company.sector ?? null,
+          industry: company.industry ?? null,
+        }
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    const hasContext = trimmedTickers.length > 0 || contextCompanies.length > 0
+    const rangeCandidates = [
+      ...trimmedTickers,
+      ...contextCompanies.map((company) => company.ticker).filter((value): value is string => typeof value === "string"),
     ]
-    const us = [
-      { ticker: "AAPL", name: "Apple" },
-      { ticker: "MSFT", name: "Microsoft" },
-      { ticker: "GOOGL", name: "Alphabet" },
-      { ticker: "AMZN", name: "Amazon" },
-      { ticker: "NVDA", name: "NVIDIA" },
-    ]
-    return settings.preferredMarket === "us" ? us : jp
-  }, [settings.preferredMarket])
+    const jpxRangeBase =
+      settings.preferredMarket === "jp" ? deriveRangeBaseFromTickers(rangeCandidates) : null
+    const filteredByUsage = baseList.filter(
+      (company) => !usedTickerSet.has(normalizeTickerForComparison(company.ticker)),
+    )
+    const baseForRange = filteredByUsage.length > 0 ? filteredByUsage : baseList
+    const rangeFocusedList =
+      jpxRangeBase !== null
+        ? baseForRange.filter((company) => extractJpxRange(company.ticker) === jpxRangeBase)
+        : []
+    const groupFallbackList =
+      settings.preferredMarket === "jp"
+        ? normalizedTickers
+            .map((ticker) => jpTickerGroupFallbacks[ticker])
+            .find((list) => Array.isArray(list) && list.length > 0)
+        : undefined
+    const groupFiltered =
+      Array.isArray(groupFallbackList) && groupFallbackList.length > 0
+        ? groupFallbackList.filter(
+            (company) => !usedTickerSet.has(normalizeTickerForComparison(company.ticker)),
+          )
+        : []
+    const fallbackList =
+      groupFiltered.length > 0
+        ? groupFiltered
+        : rangeFocusedList.length > 0
+          ? rangeFocusedList
+          : baseForRange
+
+    if (!hasContext) {
+      setSuggestedCompanies(fallbackList)
+      setSuggestedError(null)
+      suggestionContextKeyRef.current = null
+      setSuggestedLoading(false)
+      return
+    }
+
+    const normalizedContext = contextCompanies.map((company) => ({
+      ticker: company.ticker ? normalizeTickerForComparison(company.ticker) : null,
+      sector: company.sector ?? null,
+      industry: company.industry ?? null,
+    }))
+    const payloadSignature = JSON.stringify({
+      market: settings.preferredMarket,
+      tickers: normalizedTickers,
+      companies: normalizedContext,
+      rangeBase: jpxRangeBase ?? "none",
+    })
+    if (suggestionContextKeyRef.current === payloadSignature) {
+      return
+    }
+
+    const fetchSuggestions = async () => {
+      setSuggestedLoading(true)
+      setSuggestedError(null)
+      try {
+        const response = await fetch("/api/suggestions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            tickers: trimmedTickers,
+            preferredMarket: settings.preferredMarket,
+            companies: contextCompanies,
+            rangeBase: jpxRangeBase,
+          }),
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(
+            typeof data?.error === "string" && data.error.length > 0 ? data.error : "候補の取得に失敗しました。",
+          )
+        }
+        const remoteList = sanitizeSuggestionList(data?.suggestions)
+        const filtered = remoteList.filter(
+          (item) => !usedTickerSet.has(normalizeTickerForComparison(item.ticker)),
+        )
+        const rangeAdjusted =
+          jpxRangeBase !== null
+            ? filtered.filter((item) => extractJpxRange(item.ticker) === jpxRangeBase)
+            : filtered
+        const limited = (rangeAdjusted.length > 0 ? rangeAdjusted : filtered).slice(0, 6)
+        const isFallbackResponse = Boolean(data?.fallback)
+        const mustFallback = isFallbackResponse || limited.length === 0
+
+        if (!cancelled) {
+          setSuggestedCompanies(mustFallback ? fallbackList : limited)
+          const nextError = (() => {
+            if (typeof data?.error === "string" && data.error.length > 0) return data.error
+            if (isFallbackResponse) return fallbackList.length === 0 ? "AI候補の取得に失敗しました。" : null
+            if (limited.length === 0) return fallbackList.length === 0 ? "AI候補が見つかりませんでした。" : null
+            return null
+          })()
+          setSuggestedError(nextError)
+          suggestionContextKeyRef.current = payloadSignature
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load Gemini suggestions:", error)
+          setSuggestedError(error instanceof Error ? error.message : "候補の取得に失敗しました。")
+          setSuggestedCompanies(fallbackList)
+          suggestionContextKeyRef.current = payloadSignature
+        }
+      } finally {
+        if (!cancelled) {
+          setSuggestedLoading(false)
+        }
+      }
+    }
+
+    void fetchSuggestions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [companies, settings.preferredMarket, tickers])
 
   const handleSuggestedSelect = useCallback(
     (ticker: string) => {
@@ -443,33 +687,8 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold">おすすめセット</p>
-              <p className="mt-1 text-xs text-muted-foreground">クリックすると空枠にティッカーが差し込まれます。</p>
-            </div>
-            <span className="inline-flex items-center rounded-full border border-input/60 px-3 py-1 text-xs font-semibold text-muted-foreground">
-              {settings.preferredMarket === "us" ? "米国市場を優先表示中" : "国内市場を優先表示中"}
-            </span>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {suggestedCompanies.map((company) => (
-              <Button
-                key={company.ticker}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-full border-input px-4 py-2 text-xs font-medium text-foreground/80"
-                onClick={() => handleSuggestedSelect(company.ticker)}
-              >
-                {company.name}
-              </Button>
-            ))}
-          </div>
-        </div>
         {history.length > 0 && (
-          <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
+        <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold">最近の入力</p>
@@ -498,6 +717,42 @@ export default function DashboardPage() {
                   </Button>
                 ))}
               </div>
+          </div>
+        )}
+        {hasCandidateContext && (
+          <div className={cn("mt-6 p-6 text-left", secondaryPanelClass)}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">候補</p>
+                <p className="mt-1 text-xs text-muted-foreground">クリックすると空枠にティッカーが差し込まれます。</p>
+              </div>
+              <span className="inline-flex items-center rounded-full border border-input/60 px-3 py-1 text-xs font-semibold text-muted-foreground">
+                {settings.preferredMarket === "us" ? "米国市場を優先表示中" : "国内市場を優先表示中"}
+              </span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {suggestedCompanies.length === 0 && !suggestedLoading && !suggestedError && (
+                <p className="text-xs text-muted-foreground">候補が見つかりませんでした。</p>
+              )}
+              {suggestedCompanies.map((company) => (
+                <Button
+                  key={company.ticker}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  title={company.reason ?? company.ticker}
+                  className="rounded-full border-input px-4 py-2 text-xs font-medium text-foreground/80"
+                  onClick={() => handleSuggestedSelect(company.ticker)}
+                >
+                  <span>{company.name}</span>
+                  <span className="ml-2 text-[11px] text-muted-foreground">{company.ticker}</span>
+                </Button>
+              ))}
+            </div>
+            {suggestedLoading && (
+              <div className="mt-3 h-1.5 w-16 rounded-full bg-muted dark:bg-white/20 animate-pulse" aria-hidden="true" />
+            )}
+            {suggestedError && <p className="mt-2 text-xs text-red-500">{suggestedError}</p>}
           </div>
         )}
         </div>

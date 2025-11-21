@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 import { ArrowRight, BarChart3, ChevronLeft, ChevronRight, NotebookPen, ShieldCheck, Sparkles, Workflow } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "./providers"
-import { getAuth, signOut } from "firebase/auth"
 
 const features = [
   {

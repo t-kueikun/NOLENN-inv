@@ -62,7 +62,7 @@ interface InsightCacheEntry {
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6
 const insightsCache = new Map<string, InsightCacheEntry>()
 
-const WIKIPEDIA_API_ENDPOINT = "https://ja.wikipedia.org/w/api.php"
+const _WIKIPEDIA_API_ENDPOINT = "https://ja.wikipedia.org/w/api.php"
 export const WIKIPEDIA_USER_AGENT = "AIDE-Investment-App/1.0 (+https://aide.example.com)"
 
 interface OfficerInfo {
@@ -198,7 +198,7 @@ async function fetchCompanyLogo(ticker: string, website?: string | null): Promis
   return buildLogoFromWebsite(website)
 }
 
-function formatHeadquarters(profile: Record<string, any> | undefined) {
+function _formatHeadquarters(profile: Record<string, any> | undefined) {
   if (!profile) return null
   const parts = [profile.address1, profile.city, profile.state ?? profile.region, profile.country]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
@@ -207,9 +207,21 @@ function formatHeadquarters(profile: Record<string, any> | undefined) {
   return parts.join(", ")
 }
 
+function stripHtmlTags(value: string | null | undefined): string {
+  if (typeof value !== "string") return ""
+  return value
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function formatCapitalAmount(raw: string | null | undefined): string | null {
   if (!raw) return null
-  const trimmed = raw.trim()
+  const plain = stripHtmlTags(raw)
+  const trimmed = plain.trim()
   if (!trimmed) return null
   if (/[^\d.,-]/.test(trimmed)) {
     return trimmed
@@ -359,7 +371,7 @@ function composeRepresentative(name?: string | null, title?: string | null): str
   return null
 }
 
-function extractRepresentativeFromWikitext(wikitext: string): OfficerInfo | null {
+function _extractRepresentativeFromWikitext(wikitext: string): OfficerInfo | null {
   const candidates: OfficerInfo[] = []
   const lines = wikitext.split(/\r?\n/)
   const keys = ["代表者", "代表者1", "代表者名", "代表", "代表取締役", "CEO", "代表取締役社長"]

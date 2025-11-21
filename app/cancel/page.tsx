@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { doc, serverTimestamp, setDoc } from "firebase/firestore"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -27,7 +26,6 @@ async function fetchSubscriptionFromFirestore(uid: string) {
 }
 
 export default function CancelPage() {
-  const router = useRouter()
   const { user, loading: authLoading, plan, planLoading } = useAuth()
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null)
   const [reason, setReason] = useState("")
