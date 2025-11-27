@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, BarChart3, ChevronLeft, ChevronRight, NotebookPen, ShieldCheck, Sparkles, Workflow } from "lucide-react"
@@ -48,78 +49,56 @@ interface HeroSnapshot {
   score: number
 }
 
+const formatCompanyName = (name: string) => {
+  const cleaned = name
+    .replace(/(株式会社|ホールディングス?|グループ)/g, "")
+    .replace(/(HD|ＨＤ|ホールディングス|Holdings)/gi, "")
+    .trim()
+  if (!cleaned) return name
+  return cleaned.length > 14 ? `${cleaned.slice(0, 14)}…` : cleaned
+}
+
+
 const heroSnapshots: HeroSnapshot[] = [
   {
-    ticker: "9831.T",
-    company: "ヤマダ電機",
-    strengths: ["住宅・リフォームとの連携で高単価モデルを確立。", "PB強化とリユース事業が伸長。", "店舗×ECの統合で来店価値を向上。"],
-    risks: ["EC対応の遅れが粗利に響く懸念。", "家電単独販売の利益率が低め。", "都市部での店舗網拡大が課題。"],
-    outlook: ["住宅×家電モデルの深耕で再成長フェーズへ。", "DX投資で在庫・人員効率化が進む見込み。", "リフォーム需要取り込みで収益改善期待。"],
-    score: 72,
+    ticker: "7203.T",
+    company: "トヨタ自動車",
+    strengths: ["HV/HEVで圧倒的シェアと収益力。", "グローバル供給網と在庫管理の強さ。", "ソフトウェア／コネクテッド戦略の加速。"],
+    risks: ["EVシフト速度への懸念。", "北米依存度が高く需要サイクル影響。", "半導体不足や物流制約。"],
+    outlook: ["EV・HV最適ミックスで利益確保。", "ソフトウェア収益化モデルの構築。", "新興国需要取り込みで成長継続。"],
+    score: 84,
   },
   {
-    ticker: "7419.T",
-    company: "ノジマ",
-    strengths: ["通信キャリア販売のシナジーが高い。", "提案型接客で顧客満足度が高水準。", "グループ横断のDXが営業効率を押し上げ。"],
-    risks: ["人件費と運営コストが増加傾向。", "非家電領域の収益がまだ脆弱。", "全国展開スピードが緩やか。"],
-    outlook: ["通信×家電モデルの深化で売上安定化を狙う。", "EC併用で営業効率が改善。", "利益率改善の再構築期にある。"],
-    score: 63,
-  },
-  {
-    ticker: "3048.T",
-    company: "ビックカメラ",
-    strengths: ["都市立地＋EC連携で高回転モデル。", "グループ内仕入・物流の効率化。", "家電以外（医薬・酒類など）の多角化が奏功。"],
-    risks: ["家電量販業界の競争激化が続く。", "粗利率の変動が収益に直結。", "地方展開が限定的で拡大余地あり。"],
-    outlook: ["オムニチャネル強化で収益安定化へ。", "顧客データ活用でリピート率向上が狙える。", "店舗改装とEC統合で成長余地。"],
-    score: 68,
-  },
-  {
-    ticker: "8058.T",
-    company: "三菱商事",
-    strengths: ["資源・非資源のバランスが良いポートフォリオ。", "総合的なトレーディング力が高い。", "脱炭素に向けた投資余力が大きい。"],
-    risks: ["資源価格の急変動が利益を直撃。", "新興国プロジェクトの政治リスク。", "大型投資の回収期間が長い。"],
-    outlook: ["脱炭素投資でポートフォリオ転換を加速。", "非資源領域の拡大で収益分散を目指す。", "デジタル活用で事業効率化を推進。"],
+    ticker: "7267.T",
+    company: "ホンダ",
+    strengths: ["二輪・四輪の多角ポートフォリオ。", "電動化に向けたアライアンス活用。", "北米でのSUV/ピックアップの強さ。"],
+    risks: ["EV投資負担で利益圧迫。", "為替・原材料高の影響。", "一部地域での販売競争激化。"],
+    outlook: ["北米でのEV立ち上げと電池調達強化。", "二輪の高収益を成長投資に充当。", "ソフトウェア定義車への転換を推進。"],
     score: 78,
   },
   {
-    ticker: "8053.T",
-    company: "住友商事",
-    strengths: ["インフラ・資源・メディアを横断する事業基盤。", "アライアンス活用による事業開発力。", "ESGを意識した資産ポートフォリオ。"],
-    risks: ["資源分野のボラティリティが高い。", "成熟事業が多く成長加速が課題。", "海外案件の地政学リスク。"],
-    outlook: ["社会インフラ投資で中長期の安定収益を狙う。", "再生エネルギー領域で新規事業創出。", "既存資産の入れ替えでROA改善に注力。"],
+    ticker: "7201.T",
+    company: "日産自動車",
+    strengths: ["コスト改善とアライアンス活用。", "SUV・EVの拡充（Ariya 等）。", "新興国でのブランド認知。"],
+    risks: ["北米価格競争とインセンティブ増。", "EVシフトの資金負担。", "為替変動とサプライ制約。"],
+    outlook: ["電動化ラインナップを拡大。", "固定費削減で利益率回復を狙う。", "ソフトウェアとコネクテッド収益強化。"],
+    score: 70,
+  },
+  {
+    ticker: "7270.T",
+    company: "SUBARU",
+    strengths: ["AWD・SUVのブランド力。", "北米での高単価ラインアップ。", "安全技術（アイサイト）の訴求。"],
+    risks: ["北米需要サイクルに強く依存。", "為替変動の影響。", "電動化投資の負担。"],
+    outlook: ["ハイブリッド/EV投入で北米の規制対応。", "生産能力とサプライの安定化。", "SUV主力の価格維持で収益確保。"],
     score: 74,
   },
   {
-    ticker: "8031.T",
-    company: "三井物産",
-    strengths: ["機械・化学の収益力が高い。", "事業会社との連携力が大きい。", "多角化されたグローバルネットワーク。"],
-    risks: ["大型投資の評価損リスク。", "一部資源依存の残存。", "海外規制や政情の影響を受ける。"],
-    outlook: ["農業・ヘルスケアなど非資源領域を拡大。", "循環型社会を意識した投資を推進。", "デジタル化で事業最適化を進める。"],
-    score: 71,
-  },
-  {
-    ticker: "4755.T",
-    company: "楽天グループ",
-    strengths: ["EC・金融・通信のエコシステムが強固。", "会員基盤とポイント経済圏の訴求力。", "データ活用を軸に新サービス展開。"],
-    risks: ["通信事業の大型投資負担が継続。", "競争激化でECマージンが圧迫。", "金融規制の強化で影響を受けやすい。"],
-    outlook: ["スーパーアプリ戦略で顧客囲い込みを加速。", "通信の収益化が進めば全体の黒字化が見込める。", "海外展開とFinTech強化で成長余地。"],
-    score: 65,
-  },
-  {
-    ticker: "9418.T",
-    company: "USEN-NEXT",
-    strengths: ["店舗向けサービスで顧客基盤が強い。", "業務DXサービスの拡充。", "決済や通信サービスとのクロスセルが可能。"],
-    risks: ["店舗市場の景気変動に影響を受ける。", "人件費・設備投資の負担。", "新規事業の収益化には時間を要する。"],
-    outlook: ["店舗DX需要の高まりで成長ドライバーが明確。", "サブスク収益の安定化を図る段階。", "M&Aと新規領域開拓で事業拡張を目指す。"],
-    score: 67,
-  },
-  {
-    ticker: "3923.T",
-    company: "ラクス",
-    strengths: ["経費精算・請求書クラウドで高継続率。", "中小企業市場でのブランド認知が高い。", "利用料金が手頃で導入ハードルが低い。"],
-    risks: ["競合の参入で価格圧力が高まる。", "人員増による販管費の上昇。", "大企業向け機能拡張に投資が必要。"],
-    outlook: ["SaaS市場拡大で新規顧客獲得が継続。", "クロスセルでARPU向上が狙える。", "海外展開で第二の成長エンジンを模索。"],
-    score: 70,
+    ticker: "7261.T",
+    company: "マツダ",
+    strengths: ["CXシリーズ中心のSUV比率向上。", "商品力とデザインで価格強化。", "北米での販売回復。"],
+    risks: ["スケールが小さく投資負担が重い。", "為替と原材料の影響。", "電動化対応の遅れリスク。"],
+    outlook: ["ハイブリッド導入とEV展開を前倒し。", "価格維持とミックス改善で収益底上げ。", "北米・欧州での販売網強化。"],
+    score: 68,
   },
 ]
 
@@ -146,25 +125,25 @@ const workflowSteps = [
 
 const exampleComparisons = [
   {
-    title: "家電量販 × 住設",
-    description: "住宅とのシナジー戦略が進む家電量販大手を比較。",
-    tickers: ["9831.T", "7419.T", "3048.T"],
-    highlight: "住宅リモデルの有無が投資判断を分ける",
-    scoreRange: "63 - 72",
+    title: "国内大手OEM",
+    description: "トヨタ・ホンダ・日産の電動化と収益力を横並びでチェック。",
+    tickers: ["7203.T", "7267.T", "7201.T"],
+    highlight: "北米依存度とEV投資負担、ソフトウェア収益化の進捗",
+    scoreRange: "70 - 84",
   },
   {
-    title: "総合商社",
-    description: "世界展開と脱炭素戦略が鍵となるメガトレーダー。",
-    tickers: ["8058.T", "8053.T", "8031.T"],
-    highlight: "資源価格敏感度と事業多角化を比較",
-    scoreRange: "66 - 78",
+    title: "SUV/AWD 強みの3社",
+    description: "SUBARU・マツダ・三菱自でSUV/4WDラインを比較。",
+    tickers: ["7270.T", "7261.T", "7211.T"],
+    highlight: "SUV比率と価格維持、電動化ロードマップの差",
+    scoreRange: "64 - 76",
   },
   {
-    title: "IT プラットフォーム",
-    description: "国内DXを牽引する SaaS / プラットフォーム企業。",
-    tickers: ["4755.T", "9418.T", "3923.T"],
-    highlight: "サブスク収益と継続率の強さがポイント",
-    scoreRange: "60 - 75",
+    title: "小型・新興国ドライブ",
+    description: "スズキを中心に小型車と新興国展開の強みを比較。",
+    tickers: ["7269.T", "7267.T", "7203.T"],
+    highlight: "新興国シェア、電動化コスト転嫁、為替耐性",
+    scoreRange: "68 - 82",
   },
 ]
 
@@ -236,6 +215,7 @@ export default function LandingPage() {
 
   const activeConfig = heroSnapshots[activeCompanyIndex]
   const activeCompany = heroInsights[activeConfig.ticker] ?? activeConfig
+  const displayCompanyName = formatCompanyName(activeCompany.company)
   const glassButtonClass =
     "rounded-full border border-white/40 bg-white/30 px-6 font-semibold text-foreground shadow-[0_18px_45px_rgba(2,6,23,0.18)] backdrop-blur-lg hover:bg-white/40 dark:border-white/15 dark:bg-white/10 dark:text-white"
 
@@ -270,7 +250,7 @@ export default function LandingPage() {
                           query: { tickers: exampleComparisons[0].tickers.join(",") },
                         }}
                       >
-                        人気事例を試す
+                        自動車3社で試す
                       </Link>
                     </Button>
                   </>
@@ -290,71 +270,80 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex h-full flex-col gap-5 rounded-3xl border border-border/70 bg-card/90 p-6 text-card-foreground shadow-lg shadow-black/5 dark:shadow-black/40">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-primary">Snapshot</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full border border-border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {activeCompany.ticker}
-                    </span>
-                    <p className="text-lg font-semibold text-foreground">{activeCompany.company}</p>
+            <div className="relative overflow-hidden rounded-4xl border border-white/35 bg-white/85 text-foreground shadow-[0_30px_80px_rgba(2,6,23,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/5 dark:text-white">
+              <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.12),transparent_32%),radial-gradient(circle_at_80%_15%,rgba(94,234,212,0.1),transparent_30%),radial-gradient(circle_at_60%_85%,rgba(244,63,94,0.08),transparent_40%)]" />
+              <div className="relative space-y-6 px-6 py-6">
+                <div className="flex flex-wrap items-start justify-between gap-4 md:flex-nowrap">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                      Snapshot
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full border border-white/60 bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm backdrop-blur dark:border-white/15 dark:bg-white/10 dark:text-white">
+                        {activeCompany.ticker}
+                      </span>
+                      <p className="text-xl font-semibold text-foreground dark:text-white">{displayCompanyName}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 self-start rounded-3xl border border-white/50 bg-white/75 px-4 py-2 text-right shadow-sm backdrop-blur dark:border-white/15 dark:bg-white/10">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score</p>
+                      <p className="text-3xl font-bold text-primary dark:text-white">
+                        {activeCompany.score}
+                        <span className="ml-1 text-xs font-semibold text-muted-foreground">/100</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 rounded-full border-white/60 bg-white/70 text-foreground shadow-sm hover:bg-white dark:border-white/20 dark:bg-white/10 dark:text-white"
+                        onClick={() =>
+                          setActiveCompanyIndex((prev) => (prev - 1 + heroSnapshots.length) % heroSnapshots.length)
+                        }
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 rounded-full border-white/60 bg-white/70 text-foreground shadow-sm hover:bg-white dark:border-white/20 dark:bg-white/10 dark:text-white"
+                        onClick={() => setActiveCompanyIndex((prev) => (prev + 1) % heroSnapshots.length)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score</p>
-                    <p className="text-2xl font-semibold text-primary">{activeCompany.score}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 rounded-full border-input"
-                      onClick={() =>
-                        setActiveCompanyIndex((prev) => (prev - 1 + heroSnapshots.length) % heroSnapshots.length)
-                      }
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[
+                    { title: "強み", accent: "text-blue-600", bullet: "bg-blue-500", items: activeCompany.strengths.slice(0, 3) },
+                    { title: "課題", accent: "text-rose-600", bullet: "bg-rose-500", items: activeCompany.risks.slice(0, 3) },
+                    { title: "見通し", accent: "text-emerald-600", bullet: "bg-emerald-500", items: activeCompany.outlook.slice(0, 3) },
+                  ].map((section) => (
+                    <div
+                      key={section.title}
+                      className="rounded-3xl border border-white/50 bg-white/80 px-5 py-4 shadow-[0_18px_40px_rgba(2,6,23,0.08)] backdrop-blur dark:border-white/15 dark:bg-white/10"
                     >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 rounded-full border-input"
-                      onClick={() => setActiveCompanyIndex((prev) => (prev + 1) % heroSnapshots.length)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      <p className={`text-[12px] font-semibold uppercase tracking-wide ${section.accent}`}>{section.title}</p>
+                      {section.items.length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm leading-6 text-foreground dark:text-white/90">
+                          {section.items.map((item, idx) => (
+                            <li key={idx} className="flex gap-2">
+                              <span className={`mt-2 h-1.5 w-1.5 rounded-full ${section.bullet}`} />
+                              <span className="line-clamp-3">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-[12px] text-muted-foreground">分析を取得しています...</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {[
-                  { title: "強み", accent: "text-blue-600", items: activeCompany.strengths.slice(0, 3) },
-                  { title: "課題", accent: "text-rose-600", items: activeCompany.risks.slice(0, 3) },
-                  { title: "見通し", accent: "text-emerald-600", items: activeCompany.outlook.slice(0, 3) },
-                ].map((section) => (
-                  <div
-                    key={section.title}
-                    className="rounded-xl border border-border/80 bg-background/70 p-3 shadow-[0_8px_20px_rgba(2,6,23,0.08)]"
-                  >
-                    <p className={`text-[11px] font-semibold uppercase tracking-wide ${section.accent}`}>{section.title}</p>
-                    {section.items.length > 0 ? (
-                      <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground leading-5">
-                        {section.items.map((item, idx) => (
-                          <li key={idx} className="flex gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/70" />
-                            <span className="line-clamp-3 leading-5">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-2 text-xs text-muted-foreground">分析を取得しています...</p>
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
           </div>

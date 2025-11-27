@@ -184,6 +184,7 @@ function ensureHttps(url?: string | null): string | undefined {
   return `https://${trimmed}`
 }
 
+
 export default function DashboardPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -619,13 +620,13 @@ export default function DashboardPage() {
   }, [companies, settings.preferredMarket, tickers])
 
   const setTickerIntoSlot = useCallback((ticker: string) => {
-    let resolvedIndex = 0
-    setTickers((prev) => {
-      const emptyIndex = prev.findIndex((value) => !value.trim())
-      resolvedIndex = emptyIndex === -1 ? 0 : emptyIndex
-      return prev.map((value, idx) => (idx === resolvedIndex ? ticker : value))
-    })
-    return resolvedIndex
+    const current = tickersRef.current
+    const emptyIndex = current.findIndex((value) => !value.trim())
+    const targetIndex = emptyIndex === -1 ? 0 : emptyIndex
+    const next = current.map((value, idx) => (idx === targetIndex ? ticker : value))
+    tickersRef.current = next
+    setTickers(next)
+    return targetIndex
   }, [])
 
   const handleSuggestedSelect = useCallback(
@@ -655,6 +656,15 @@ export default function DashboardPage() {
     "rounded-4xl border border-dashed border-white/40 bg-white/20 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl dark:border-white/15 dark:bg-white/5 dark:text-white/50"
   const dividerClass = "my-6 w-full border-t border-white/60 dark:border-white/10"
   const bulletClass = "absolute left-0 top-2 h-1.5 w-1.5 rounded-full bg-slate-400/70 dark:bg-white/60"
+
+  const formatCapitalDisplay = (value?: string | null): string => {
+    if (typeof value !== "string") return "情報未取得"
+    const normalized = value.replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xfee0)).replace(/[，]/g, ",")
+    const match = normalized.match(/([0-9]{1,3}(?:,[0-9]{3})+)/)
+    if (!match) return normalized.trim() || "情報未取得"
+    const digits = match[1]
+    return `${digits} 百万円`
+  }
 
   if (authLoading || !user) {
     return (
@@ -860,7 +870,7 @@ export default function DashboardPage() {
                           </div>
                           <div>
                             <span className="font-semibold">資本金：</span>
-                            {company.capital}
+                            {formatCapitalDisplay(company.capital)}
                           </div>
                           {(typeof company.marketPrice === "number" || typeof company.marketChangePercent === "number") && (
                             <div>
