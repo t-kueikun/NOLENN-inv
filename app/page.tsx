@@ -408,54 +408,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-y border-white/20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(240,244,255,0.7))] backdrop-blur-xl dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.95),rgba(2,6,23,1))]">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="mb-12">
-              <h2 className="text-3xl font-semibold text-foreground">人気の比較事例</h2>
-              <p className="mt-4 max-w-3xl text-lg leading-8 text-muted-foreground">
-                業界やテーマごとの代表的な比較セットを用意。ボタン一つでダッシュボードに読み込み、すぐに分析結果をチェックできます。
-              </p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
-              {exampleComparisons.map((example) => (
-                <div
-                  key={example.title}
-                  className="flex flex-col justify-between rounded-3xl border border-white/30 bg-white/70 p-6 text-foreground shadow-[0_20px_60px_rgba(2,6,23,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/5 dark:text-white"
-                >
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/80 dark:text-primary/60">Ticker Set</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{example.tickers.join(" / ")}</p>
-                    </div>
-                    <h3 className="text-xl font-semibold text-foreground">{example.title}</h3>
-                    <p className="text-sm leading-6 text-foreground">{example.description}</p>
-                    <div className="rounded-2xl border border-white/30 bg-white/60 p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] dark:border-white/15 dark:bg-white/5">
-                      <p className="text-xs font-semibold uppercase text-muted-foreground">注目ポイント</p>
-                      <p className="mt-2 text-sm text-foreground">{example.highlight}</p>
-                    </div>
-                  </div>
-                  <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
-                    <div>
-                      <p className="font-medium text-muted-foreground">スコア帯</p>
-                      <p className="text-muted-foreground">{example.scoreRange}</p>
-                    </div>
-                    <Button asChild variant="outline" className={glassButtonClass}>
-                      <Link
-                        href={{
-                          pathname: "/dashboard",
-                          query: { tickers: example.tickers.join(",") },
-                        }}
-                      >
-                        ダッシュボードで見る
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         <section className="border-y border-border bg-card">
           <div className="max-w-6xl mx-auto px-6 py-20">
             <div className="mb-10 text-center">

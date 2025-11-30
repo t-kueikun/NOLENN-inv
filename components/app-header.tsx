@@ -16,9 +16,9 @@ export function AppHeader() {
           <Image
             src="/Nollen-logo-1.webp"
             alt="NOLENN"
-            width={512}
-            height={160}
-            className="h-12 w-auto sm:h-14 dark:invert"
+            width={340}
+            height={110}
+            className="h-10 w-auto sm:h-12 dark:invert"
             priority
           />
         </Link>

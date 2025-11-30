@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
@@ -11,9 +12,13 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "NOLENN",
+  description: "Created with NOLENN",
+  generator: "NOLENN",
+  icons: {
+    icon: "/Nollen-logo-2.webp",
+    shortcut: "/Nollen-logo-2.webp",
+  },
 }
 
 export default function RootLayout({
@@ -29,6 +34,19 @@ export default function RootLayout({
             <div className="flex min-h-screen flex-col">
               <AppHeader />
               <main className="flex-1">{children}</main>
+              <footer className="border-t border-border bg-muted/30 text-sm text-muted-foreground">
+                <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
+                  <p className="text-xs sm:text-sm">© {new Date().getFullYear()} NOLENN</p>
+                  <div className="flex items-center gap-4">
+                    <Link href="/terms" className="hover:text-foreground">
+                      利用規約
+                    </Link>
+                    <Link href="/privacy" className="hover:text-foreground">
+                      プライバシーポリシー
+                    </Link>
+                  </div>
+                </div>
+              </footer>
             </div>
             <Analytics />
           </AuthProvider>
